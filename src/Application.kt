@@ -2,6 +2,7 @@ package io.defolters
 
 import auth.JwtService
 import auth.hash
+import io.defolters.auth.MySession
 import io.ktor.application.Application
 import io.ktor.application.install
 import io.ktor.auth.Authentication
@@ -14,7 +15,6 @@ import io.ktor.routing.routing
 import io.ktor.sessions.Sessions
 import io.ktor.sessions.cookie
 import io.ktor.util.KtorExperimentalAPI
-import io.defolters.auth.MySession
 import repository.DatabaseFactory
 import repository.TodoRepository
 import routes.todos
@@ -64,7 +64,7 @@ fun Application.module() {
     routing {
         users(db, jwtService, hashFunction)
         todos(db)
-     }
+    }
 }
 
 const val API_VERSION = "/v1"

@@ -44,9 +44,11 @@ dependencies {
     compile "org.jetbrains.exposed:exposed-core:$exposed_version"
     compile "org.jetbrains.exposed:exposed-dao:$exposed_version"
     compile "org.jetbrains.exposed:exposed-jdbc:$exposed_version"
+    compile "org.jetbrains.exposed:exposed-jodatime:$exposed_version"
 //    compile "com.h2database:h2:$h2_version"
     compile "org.postgresql:postgresql:$postgres_version"
     compile "com.zaxxer:HikariCP:$hikaricp_version"
+    compile 'joda-time:joda-time:2.10.5'
     testCompile "io.ktor:ktor-server-tests:$ktor_version"
 }
 task stage(dependsOn: ['assembleShadowDist'])

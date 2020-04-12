@@ -1,9 +1,11 @@
 package repository
 
-import io.defolters.repository.Users
-import io.defolters.repository.Todos
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import io.defolters.repository.tables.ItemTemplates
+import io.defolters.repository.tables.TaskTemplates
+import io.defolters.repository.tables.Todos
+import io.defolters.repository.tables.Users
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.Database
@@ -18,6 +20,11 @@ object DatabaseFactory {
         transaction {
             SchemaUtils.create(Users)
             SchemaUtils.create(Todos)
+            SchemaUtils.create(ItemTemplates)
+            SchemaUtils.create(TaskTemplates)
+//            SchemaUtils.create(Items)
+//            SchemaUtils.create(Tasks)
+//            SchemaUtils.create(Orders)
         }
     }
 
@@ -41,7 +48,8 @@ object DatabaseFactory {
     }
 
     suspend fun <T> dbQuery(
-        block: () -> T): T =
+        block: () -> T
+    ): T =
         withContext(Dispatchers.IO) {
             transaction { block() }
         }
