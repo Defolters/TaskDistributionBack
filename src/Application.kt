@@ -3,6 +3,7 @@ package io.defolters
 import auth.JwtService
 import auth.hash
 import io.defolters.auth.MySession
+import io.defolters.routes.itemTemplates
 import io.ktor.application.Application
 import io.ktor.application.install
 import io.ktor.auth.Authentication
@@ -64,6 +65,7 @@ fun Application.module() {
     routing {
         users(db, jwtService, hashFunction)
         todos(db)
+        itemTemplates(db)
     }
 }
 

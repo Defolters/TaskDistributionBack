@@ -1,7 +1,7 @@
-
 package routes
 
 import io.defolters.API_VERSION
+import io.defolters.auth.MySession
 import io.ktor.application.application
 import io.ktor.application.call
 import io.ktor.application.log
@@ -14,7 +14,6 @@ import io.ktor.response.respond
 import io.ktor.routing.Route
 import io.ktor.sessions.get
 import io.ktor.sessions.sessions
-import io.defolters.auth.MySession
 import repository.Repository
 
 const val TODOS = "$API_VERSION/todos"

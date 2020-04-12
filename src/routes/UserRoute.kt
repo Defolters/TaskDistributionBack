@@ -2,6 +2,7 @@ package routes
 
 import auth.JwtService
 import io.defolters.API_VERSION
+import io.defolters.auth.MySession
 import io.ktor.application.application
 import io.ktor.application.call
 import io.ktor.application.log
@@ -17,7 +18,6 @@ import io.ktor.response.respondText
 import io.ktor.routing.Route
 import io.ktor.sessions.sessions
 import io.ktor.sessions.set
-import io.defolters.auth.MySession
 import repository.Repository
 
 const val USERS = "$API_VERSION/users"
