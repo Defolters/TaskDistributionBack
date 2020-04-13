@@ -4,6 +4,7 @@ import auth.JwtService
 import auth.hash
 import io.defolters.auth.MySession
 import io.defolters.routes.itemTemplates
+import io.defolters.routes.orders
 import io.ktor.application.Application
 import io.ktor.application.install
 import io.ktor.auth.Authentication
@@ -17,7 +18,7 @@ import io.ktor.sessions.Sessions
 import io.ktor.sessions.cookie
 import io.ktor.util.KtorExperimentalAPI
 import repository.DatabaseFactory
-import repository.TodoRepository
+import repository.RepositoryImpl
 import routes.todos
 import routes.users
 import kotlin.collections.set
@@ -38,7 +39,7 @@ fun Application.module() {
     }
 
     DatabaseFactory.init()
-    val db = TodoRepository()
+    val db = RepositoryImpl()
     val jwtService = JwtService()
     val hashFunction = { s: String -> hash(s) }
 
@@ -66,6 +67,7 @@ fun Application.module() {
         users(db, jwtService, hashFunction)
         todos(db)
         itemTemplates(db)
+        orders(db)
     }
 }
 

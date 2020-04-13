@@ -39,6 +39,12 @@ fun Route.taskTemplates(db: Repository) {
             val isAdditional = taskTemplateParameters["isAdditional"]
                 ?: return@post call.respond(HttpStatusCode.BadRequest, "Missing isAdditional")
 
+            if (db.findItemTemplate(itemTemplateId.toIntOrNull()) == null) {
+                return@post call.respond(
+                    HttpStatusCode.BadRequest,
+                    "Not valid itemTemplateId"
+                )
+            }
 
             try {
                 db.addTaskTemplate(

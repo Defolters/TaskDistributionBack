@@ -1,6 +1,7 @@
 package repository
 
 import io.defolters.models.ItemTemplate
+import io.defolters.models.Order
 import io.defolters.models.TaskTemplate
 import models.Todo
 import models.User
@@ -29,6 +30,7 @@ interface Repository {
     suspend fun addItemTemplate(title: String): ItemTemplate?
     suspend fun deleteItemTemplate(id: Int)
     suspend fun getItemTemplates(): List<ItemTemplate>
+    suspend fun findItemTemplate(itemTemplateId: Int?): ItemTemplate?
     //update fun
 
     // TaskTemplates
@@ -47,4 +49,13 @@ interface Repository {
     //update fun
 
     // Orders
+    suspend fun addOrder(
+        customerName: String,
+        customerEmail: String,
+        price: Float,
+        createdAt: Long
+    ): Order?
+
+    suspend fun deleteOrder(id: Int)
+    suspend fun getOrders(): List<Order>
 }

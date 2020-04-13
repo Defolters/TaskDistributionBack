@@ -1,18 +1,16 @@
 package repository
 
 import io.defolters.models.ItemTemplate
+import io.defolters.models.Order
 import io.defolters.models.TaskTemplate
-import io.defolters.repository.tables.ItemTemplates
-import io.defolters.repository.tables.TaskTemplates
-import io.defolters.repository.tables.Todos
-import io.defolters.repository.tables.Users
+import io.defolters.repository.tables.*
 import models.Todo
 import models.User
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import repository.DatabaseFactory.dbQuery
 
-class TodoRepository : Repository {
+class RepositoryImpl : Repository {
 
     override suspend fun addUser(email: String, displayName: String, passwordHash: String): User? {
         var statement: InsertStatement<Number>? = null
@@ -114,6 +112,16 @@ class TodoRepository : Repository {
         }
     }
 
+    override suspend fun findItemTemplate(itemTemplateId: Int?): ItemTemplate? {
+        if (itemTemplateId == null) return null
+
+        return dbQuery {
+            ItemTemplates.select {
+                ItemTemplates.id.eq(itemTemplateId)
+            }.mapNotNull { rowToItemTemplate(it) }.singleOrNull()
+        }
+    }
+
     override suspend fun addTaskTemplate(
         title: String,
         itemTemplateId: Int,
@@ -155,6 +163,38 @@ class TodoRepository : Repository {
             TaskTemplates.select {
                 TaskTemplates.itemTemplateId.eq((itemTemplateId))
             }.mapNotNull { rowToTaskTemplate(it) }
+        }
+    }
+
+    override suspend fun addOrder(
+        customerName: String,
+        customerEmail: String,
+        price: Float,
+        createdAt: Long
+    ): Order? {
+        var statement: InsertStatement<Number>? = null
+        dbQuery {
+            statement = Orders.insert {
+                it[Orders.customerName] = customerName
+                it[Orders.customerEmail] = customerEmail
+                it[Orders.price] = price
+                it[Orders.createdAt] = createdAt
+            }
+        }
+        return rowToOrder(statement?.resultedValues?.get(0))
+    }
+
+    override suspend fun deleteOrder(id: Int) {
+        dbQuery {
+            Orders.deleteWhere {
+                Orders.id.eq(id)
+            }
+        }
+    }
+
+    override suspend fun getOrders(): List<Order> {
+        return dbQuery {
+            Orders.selectAll().mapNotNull { rowToOrder(it) }
         }
     }
 
@@ -204,6 +244,19 @@ class TodoRepository : Repository {
             workerType = row[TaskTemplates.workerType],
             timeToComplete = row[TaskTemplates.timeToComplete],
             isAdditional = row[TaskTemplates.isAdditional]
+        )
+    }
+
+    private fun rowToOrder(row: ResultRow?): Order? {
+        if (row == null) {
+            return null
+        }
+        return Order(
+            id = row[ItemTemplates.id],
+            customerName = row[Orders.customerName],
+            customerEmail = row[Orders.customerEmail],
+            price = row[Orders.price],
+            createdAt = row[Orders.createdAt]
         )
     }
 }

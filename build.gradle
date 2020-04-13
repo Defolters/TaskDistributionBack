@@ -5,12 +5,14 @@ buildscript {
     
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.dokka:dokka-gradle-plugin:${dokka_version}"
         classpath 'com.github.jengelman.gradle.plugins:shadow:5.2.0'
     }
 }
 
 apply plugin: 'kotlin'
 apply plugin: 'application'
+apply plugin: 'org.jetbrains.dokka'
 
 group 'io.defolters'
 version '0.0.1'
@@ -33,22 +35,29 @@ repositories {
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    compile "io.ktor:ktor-server-netty:$ktor_version"
     compile "ch.qos.logback:logback-classic:$logback_version"
+
+    // Ktor
+    compile "io.ktor:ktor-server-sessions:$ktor_version"
+    compile "io.ktor:ktor-server-netty:$ktor_version"
     compile "io.ktor:ktor-server-core:$ktor_version"
     compile "io.ktor:ktor-locations:$ktor_version"
-    compile "io.ktor:ktor-server-sessions:$ktor_version"
     compile "io.ktor:ktor-auth:$ktor_version"
     compile "io.ktor:ktor-auth-jwt:$ktor_version"
     compile "io.ktor:ktor-gson:$ktor_version"
-    compile "org.jetbrains.exposed:exposed-core:$exposed_version"
-    compile "org.jetbrains.exposed:exposed-dao:$exposed_version"
-    compile "org.jetbrains.exposed:exposed-jdbc:$exposed_version"
+
+    // Exposed
     compile "org.jetbrains.exposed:exposed-jodatime:$exposed_version"
+    compile "org.jetbrains.exposed:exposed-core:$exposed_version"
+    compile "org.jetbrains.exposed:exposed-jdbc:$exposed_version"
+    compile "org.jetbrains.exposed:exposed-dao:$exposed_version"
+
 //    compile "com.h2database:h2:$h2_version"
     compile "org.postgresql:postgresql:$postgres_version"
     compile "com.zaxxer:HikariCP:$hikaricp_version"
     compile 'joda-time:joda-time:2.10.5'
+
+    // Test
     testCompile "io.ktor:ktor-server-tests:$ktor_version"
 }
 task stage(dependsOn: ['assembleShadowDist'])

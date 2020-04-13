@@ -2,10 +2,7 @@ package repository
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import io.defolters.repository.tables.ItemTemplates
-import io.defolters.repository.tables.TaskTemplates
-import io.defolters.repository.tables.Todos
-import io.defolters.repository.tables.Users
+import io.defolters.repository.tables.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.Database
@@ -22,9 +19,9 @@ object DatabaseFactory {
             SchemaUtils.create(Todos)
             SchemaUtils.create(ItemTemplates)
             SchemaUtils.create(TaskTemplates)
+            SchemaUtils.create(Orders)
 //            SchemaUtils.create(Items)
 //            SchemaUtils.create(Tasks)
-//            SchemaUtils.create(Orders)
         }
     }
 
