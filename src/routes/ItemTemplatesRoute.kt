@@ -1,6 +1,7 @@
 package io.defolters.routes
 
 import io.defolters.API_VERSION
+import io.defolters.repository.interfaces.ItemTemplateRepository
 import io.ktor.application.application
 import io.ktor.application.call
 import io.ktor.application.log
@@ -11,7 +12,6 @@ import io.ktor.locations.*
 import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.Route
-import repository.Repository
 
 const val ITEM_TEMPLATES = "$API_VERSION/item-templates"
 
@@ -20,7 +20,7 @@ const val ITEM_TEMPLATES = "$API_VERSION/item-templates"
 class ItemTemplatesRoute
 
 @KtorExperimentalLocationsAPI
-fun Route.itemTemplates(db: Repository) {
+fun Route.itemTemplates(db: ItemTemplateRepository) {
     authenticate("jwt") {
         post<ItemTemplatesRoute> {
             call.getActiveUser(db) ?: return@post

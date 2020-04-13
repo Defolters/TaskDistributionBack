@@ -1,6 +1,8 @@
 package io.defolters.routes
 
 import io.defolters.API_VERSION
+import io.defolters.repository.interfaces.ItemTemplateRepository
+import io.defolters.repository.interfaces.TaskTemplateRepository
 import io.ktor.application.application
 import io.ktor.application.call
 import io.ktor.application.log
@@ -11,7 +13,6 @@ import io.ktor.locations.*
 import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.Route
-import repository.Repository
 
 const val TASK_TEMPLATES = "$API_VERSION/task-templates"
 
@@ -20,7 +21,7 @@ const val TASK_TEMPLATES = "$API_VERSION/task-templates"
 class TaskTemplatesRoute
 
 @KtorExperimentalLocationsAPI
-fun Route.taskTemplates(db: Repository) {
+fun Route.taskTemplates(db: TaskTemplateRepository) {
     authenticate("jwt") {
         post<TaskTemplatesRoute> {
             call.getActiveUser(db) ?: return@post
@@ -39,7 +40,7 @@ fun Route.taskTemplates(db: Repository) {
             val isAdditional = taskTemplateParameters["isAdditional"]
                 ?: return@post call.respond(HttpStatusCode.BadRequest, "Missing isAdditional")
 
-            if (db.findItemTemplate(itemTemplateId.toIntOrNull()) == null) {
+            if ((db as? ItemTemplateRepository)?.findItemTemplate(itemTemplateId.toIntOrNull()) == null) {
                 return@post call.respond(
                     HttpStatusCode.BadRequest,
                     "Not valid itemTemplateId"

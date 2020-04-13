@@ -20,7 +20,7 @@ object DatabaseFactory {
             SchemaUtils.create(ItemTemplates)
             SchemaUtils.create(TaskTemplates)
             SchemaUtils.create(Orders)
-//            SchemaUtils.create(Items)
+            SchemaUtils.create(Items)
 //            SchemaUtils.create(Tasks)
         }
     }

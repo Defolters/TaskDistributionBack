@@ -1,6 +1,7 @@
 package io.defolters.routes
 
 import io.defolters.API_VERSION
+import io.defolters.repository.interfaces.OrderRepository
 import io.ktor.application.application
 import io.ktor.application.call
 import io.ktor.application.log
@@ -11,7 +12,6 @@ import io.ktor.locations.*
 import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.Route
-import repository.Repository
 import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -26,7 +26,7 @@ data class OrderJSON(val hello: String, val items: List<ItemJSON>)
 data class ItemJSON(val itemTemplateId: Int, val price: Float, val taskTemplatesIds: List<Int>)
 
 @KtorExperimentalLocationsAPI
-fun Route.orders(db: Repository) {
+fun Route.orders(db: OrderRepository) {
     authenticate("jwt") {
         post<OrdersRoute> {
             call.getActiveUser(db) ?: return@post

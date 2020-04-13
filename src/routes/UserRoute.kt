@@ -3,6 +3,7 @@ package routes
 import auth.JwtService
 import io.defolters.API_VERSION
 import io.defolters.auth.MySession
+import io.defolters.repository.interfaces.UserRepository
 import io.ktor.application.application
 import io.ktor.application.call
 import io.ktor.application.log
@@ -18,7 +19,6 @@ import io.ktor.response.respondText
 import io.ktor.routing.Route
 import io.ktor.sessions.sessions
 import io.ktor.sessions.set
-import repository.Repository
 
 const val USERS = "$API_VERSION/users"
 const val USER_LOGIN = "$USERS/login"
@@ -43,7 +43,7 @@ class UserCreateRoute
 class UserDeleteRoute
 
 @KtorExperimentalLocationsAPI
-fun Route.users(db: Repository, jwtService: JwtService, hashFunction: (String) -> String) {
+fun Route.users(db: UserRepository, jwtService: JwtService, hashFunction: (String) -> String) {
     post<UserLoginRoute> {
         val signinParameters = call.receive<Parameters>()
         val password =
