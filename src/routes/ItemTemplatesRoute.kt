@@ -20,7 +20,7 @@ const val ITEM_TEMPLATES = "$API_VERSION/item-templates"
 class ItemTemplatesRoute
 
 @KtorExperimentalLocationsAPI
-fun Route.itemTemplates(db: ItemTemplateRepository) {
+fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
     authenticate("jwt") {
         post<ItemTemplatesRoute> {
             call.getActiveUser(db) ?: return@post

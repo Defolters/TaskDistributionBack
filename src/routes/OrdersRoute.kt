@@ -26,7 +26,7 @@ data class OrderJSON(val hello: String, val items: List<ItemJSON>)
 data class ItemJSON(val itemTemplateId: Int, val price: Float, val taskTemplatesIds: List<Int>)
 
 @KtorExperimentalLocationsAPI
-fun Route.orders(db: OrderRepository) {
+fun Route.ordersRoute(db: OrderRepository) {
     authenticate("jwt") {
         post<OrdersRoute> {
             call.getActiveUser(db) ?: return@post

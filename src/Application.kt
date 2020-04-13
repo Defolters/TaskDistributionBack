@@ -3,9 +3,10 @@ package io.defolters
 import auth.JwtService
 import auth.hash
 import io.defolters.auth.MySession
-import io.defolters.routes.itemTemplates
-import io.defolters.routes.orders
-import io.defolters.routes.taskTemplates
+import io.defolters.routes.itemTemplatesRoute
+import io.defolters.routes.itemsRoute
+import io.defolters.routes.ordersRoute
+import io.defolters.routes.taskTemplatesRoute
 import io.ktor.application.Application
 import io.ktor.application.install
 import io.ktor.auth.Authentication
@@ -20,8 +21,8 @@ import io.ktor.sessions.cookie
 import io.ktor.util.KtorExperimentalAPI
 import repository.DatabaseFactory
 import repository.Repository
-import routes.todos
-import routes.users
+import routes.todosRoute
+import routes.usersRoute
 import kotlin.collections.set
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
@@ -65,11 +66,12 @@ fun Application.module() {
     }
 
     routing {
-        users(db, jwtService, hashFunction)
-        todos(db)
-        itemTemplates(db)
-        taskTemplates(db)
-        orders(db)
+        usersRoute(db, jwtService, hashFunction)
+        todosRoute(db)
+        itemTemplatesRoute(db)
+        taskTemplatesRoute(db)
+        ordersRoute(db)
+        itemsRoute(db)
     }
 }
 

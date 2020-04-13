@@ -24,7 +24,7 @@ const val TODOS = "$API_VERSION/todos"
 class TodoRoute
 
 @KtorExperimentalLocationsAPI
-fun Route.todos(db: TodoRepository) {
+fun Route.todosRoute(db: TodoRepository) {
     authenticate("jwt") {
         post<TodoRoute> {
             val todosParameters = call.receive<Parameters>()

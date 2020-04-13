@@ -43,7 +43,7 @@ class UserCreateRoute
 class UserDeleteRoute
 
 @KtorExperimentalLocationsAPI
-fun Route.users(db: UserRepository, jwtService: JwtService, hashFunction: (String) -> String) {
+fun Route.usersRoute(db: UserRepository, jwtService: JwtService, hashFunction: (String) -> String) {
     post<UserLoginRoute> {
         val signinParameters = call.receive<Parameters>()
         val password =

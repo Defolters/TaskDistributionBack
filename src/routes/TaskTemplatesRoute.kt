@@ -21,7 +21,7 @@ const val TASK_TEMPLATES = "$API_VERSION/task-templates"
 class TaskTemplatesRoute
 
 @KtorExperimentalLocationsAPI
-fun Route.taskTemplates(db: TaskTemplateRepository) {
+fun Route.taskTemplatesRoute(db: TaskTemplateRepository) {
     authenticate("jwt") {
         post<TaskTemplatesRoute> {
             call.getActiveUser(db) ?: return@post

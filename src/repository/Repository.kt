@@ -201,20 +201,26 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
         }
     }
 
-    override suspend fun addItem(orderId: Int, title: String, info: String, price: Float): Item? {
-        TODO("Not yet implemented")
-    }
-
     override suspend fun deleteItem(id: Int) {
-        TODO("Not yet implemented")
+        dbQuery {
+            Items.deleteWhere {
+                Items.id.eq(id)
+            }
+        }
     }
 
     override suspend fun getItems(): List<Item> {
-        TODO("Not yet implemented")
+        return dbQuery {
+            Items.selectAll().mapNotNull { it.rowToItem() }
+        }
     }
 
     override suspend fun getItems(orderId: Int): List<Item> {
-        TODO("Not yet implemented")
+        return dbQuery {
+            Items.select {
+                Items.orderId.eq((orderId))
+            }.mapNotNull { it.rowToItem() }
+        }
     }
 }
 
@@ -253,4 +259,12 @@ fun ResultRow.rowToOrder() = Order(
     customerEmail = this[Orders.customerEmail],
     price = this[Orders.price],
     createdAt = this[Orders.createdAt]
+)
+
+fun ResultRow.rowToItem() = Item(
+    id = this[Items.id],
+    orderId = this[Items.orderId],
+    price = this[Items.price],
+    title = this[Items.title],
+    info = this[Items.info]
 )
