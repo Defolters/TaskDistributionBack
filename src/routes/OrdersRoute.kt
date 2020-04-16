@@ -15,6 +15,7 @@ import io.ktor.routing.Route
 import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
+import kotlin.system.measureTimeMillis
 
 const val ORDERS = "$API_VERSION/orders"
 
@@ -22,8 +23,8 @@ const val ORDERS = "$API_VERSION/orders"
 @Location(ORDERS)
 class OrdersRoute
 
-data class OrderJSON(val hello: String, val items: List<ItemJSON>)
-data class ItemJSON(val itemTemplateId: Int, val price: Float, val taskTemplatesIds: List<Int>)
+data class OrderJSON(val customerName: String, val customerEmail: String, val items: List<ItemJSON>)
+data class ItemJSON(val itemTemplateId: Int, val info: String, val price: Double, val taskTemplatesIds: List<Int>)
 
 @KtorExperimentalLocationsAPI
 fun Route.ordersRoute(db: OrderRepository) {
@@ -36,8 +37,19 @@ fun Route.ordersRoute(db: OrderRepository) {
             val logger = Logger.getLogger("APP")
             logger.log(Level.INFO, "date: $date")
 
-            val orderJSON = call.receive<OrderJSON>()
-            call.respond(HttpStatusCode.OK, orderJSON)
+            // check fields?
+            try {
+                val orderJSON = call.receive<OrderJSON>()
+                val time = measureTimeMillis {
+                    val order = db.addOrder(orderJSON, date.time)
+                    call.respond(HttpStatusCode.OK, order)
+                }
+                logger.log(Level.INFO, "time to create order: $time")
+
+            } catch (e: Throwable) {
+                application.log.error("Failed to get Order", e)
+                call.respond(HttpStatusCode.BadRequest, "Problems getting Order")
+            }
         }
         get<OrdersRoute> {
             call.getActiveUser(db) ?: return@get

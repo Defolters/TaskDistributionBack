@@ -32,12 +32,12 @@ fun Route.itemsRoute(db: ItemRepository) {
             val orderId = itemsParameters["orderId"]
 
             try {
-                val taskTemplates = if (orderId != null) {
+                val items = if (orderId != null) {
                     db.getItems(orderId.toInt())
                 } else {
                     db.getItems()
                 }
-                call.respond(taskTemplates)
+                call.respond(items)
             } catch (e: Throwable) {
                 application.log.error("Failed to get Item", e)
                 call.respond(HttpStatusCode.BadRequest, "Problems getting Item")

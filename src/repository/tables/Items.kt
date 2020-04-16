@@ -7,7 +7,7 @@ object Items : Table() {
     val orderId = integer("orderId").references(Orders.id)
     val title = varchar("title", 512)
     val info = varchar("info", 512)
-    val price = float("price")
+    val price = double("price")
 
     override val primaryKey = PrimaryKey(id)
 }

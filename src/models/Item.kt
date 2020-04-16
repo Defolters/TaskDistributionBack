@@ -5,5 +5,5 @@ data class Item(
     val orderId: Int,
     val title: String,
     val info: String,
-    val price: Float
+    val price: Double
 )

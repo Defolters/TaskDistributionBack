@@ -1,16 +1,17 @@
 package repository
 
-import io.defolters.models.Item
-import io.defolters.models.ItemTemplate
-import io.defolters.models.Order
-import io.defolters.models.TaskTemplate
+import io.defolters.models.*
 import io.defolters.repository.interfaces.*
 import io.defolters.repository.tables.*
+import io.defolters.routes.OrderJSON
+import io.ktor.features.NotFoundException
 import models.Todo
 import models.User
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import repository.DatabaseFactory.dbQuery
+import java.util.logging.Level
+import java.util.logging.Logger
 
 class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskTemplateRepository, OrderRepository,
     ItemRepository, TaskRepository {
@@ -169,10 +170,134 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
         }
     }
 
+    override suspend fun addOrder(orderJSON: OrderJSON, time: Long): Order? {
+        var orderInsertStatement: InsertStatement<Number>? = null
+        dbQuery {
+            val items = orderJSON.items
+            val price = items.sumByDouble { it.price }
+
+            // create order
+            orderInsertStatement = Orders.insert {
+                it[Orders.customerName] = orderJSON.customerName
+                it[Orders.customerEmail] = orderJSON.customerEmail
+                it[Orders.price] = price
+                it[Orders.createdAt] = time
+            }
+            val order = orderInsertStatement?.resultedValues?.get(0)?.rowToOrder()!!
+
+            // create items
+            items.forEach { item ->
+                // get item template
+                val itemTemplate = ItemTemplates.select {
+                    ItemTemplates.id.eq((item.itemTemplateId))
+                }.mapNotNull { it.rowToItemTemplate() }.single()
+
+                //create item
+                val itemInsertStatement = Items.insert {
+                    it[Items.orderId] = order.id
+                    it[Items.title] = itemTemplate.title
+                    it[Items.info] = item.info
+                    it[Items.price] = item.price
+                }
+                val newItem = itemInsertStatement.resultedValues?.get(0)?.rowToItem()!!
+
+                // get all tasks for current item template
+                val taskTemplates = TaskTemplates.select {
+                    TaskTemplates.itemTemplateId.eq((itemTemplate.id))
+                }.mapNotNull { it.rowToTaskTemplate() }
+
+                // divide to mandatory and additional tasks
+                val mandatoryTaskTemplates = taskTemplates.filter { !it.isAdditional }.toMutableList()
+                val additionalTaskTemplates = taskTemplates.filter { it.isAdditional }
+                val logger = Logger.getLogger("APP")
+
+                // create tasks for each item
+                val setOfTasks = mutableSetOf<Int>()
+
+                //create mandatory tasks
+                var i = 0
+                while (mandatoryTaskTemplates.isNotEmpty()) {
+                    val taskTemplate = mandatoryTaskTemplates[i % mandatoryTaskTemplates.size]
+                    logger.log(Level.INFO, "task: $taskTemplate")
+                    if ((taskTemplate.taskTemplateDependencyId == null) ||
+                        (taskTemplate.taskTemplateDependencyId in setOfTasks)
+                    ) {
+                        // create task
+                        val taskInsertStatement = Tasks.insert {
+                            it[Tasks.itemId] = newItem.id
+                            it[Tasks.title] = taskTemplate.title
+                            it[Tasks.workerType] = taskTemplate.workerType
+                            it[Tasks.timeToComplete] = taskTemplate.timeToComplete
+                            it[Tasks.status] = TaskStatus.NEW
+                        }
+                        val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
+
+                        logger.log(Level.INFO, "task $newTask")
+                        setOfTasks.add(taskTemplate.id)
+                        mandatoryTaskTemplates.removeAt(i % mandatoryTaskTemplates.size)
+                    }
+                    i++
+                }
+
+                //create additional list
+                val additionalNewList = mutableListOf<TaskTemplate>()
+                val idsList = item.taskTemplatesIds.toMutableList()
+                idsList.sort()
+
+                logger.log(Level.INFO, "size ${idsList.size}")
+                for (j in 0 until idsList.size) {
+                    // we should accept only existing tasks
+                    val taskTemplate = additionalTaskTemplates.find { it.id == idsList[j] }
+                        ?: throw NotFoundException()
+
+                    taskTemplate.taskTemplateDependencyId?.let { id ->
+                        if (id !in setOfTasks) { // if wew didn't it yet
+                            idsList.add(id)
+                        }
+                    }
+
+                    //add to task's list
+                    additionalNewList.add(taskTemplate)
+                }
+
+                //create additional task
+                i = 0
+                while (additionalNewList.isNotEmpty()) {
+                    val taskTemplate = additionalNewList[i % additionalNewList.size]
+                    logger.log(Level.INFO, "task: $taskTemplate")
+
+                    if ((taskTemplate.taskTemplateDependencyId == null) ||
+                        (taskTemplate.taskTemplateDependencyId in setOfTasks)
+                    ) {
+                        // create task
+                        val taskInsertStatement = Tasks.insert {
+                            it[Tasks.itemId] = newItem.id
+                            it[Tasks.title] = taskTemplate.title
+                            it[Tasks.workerType] = taskTemplate.workerType
+                            it[Tasks.timeToComplete] = taskTemplate.timeToComplete
+                            it[Tasks.status] = TaskStatus.NEW
+                        }
+                        val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
+
+                        logger.log(Level.INFO, "task $newTask")
+                        setOfTasks.add(taskTemplate.id)
+                        additionalNewList.removeAt(i % additionalNewList.size)
+                    }
+                    i++
+                }
+
+                logger.log(Level.INFO, "set size ${setOfTasks.size}")
+
+            }
+
+        }
+        return orderInsertStatement?.resultedValues?.get(0)?.rowToOrder()!!
+    }
+
     override suspend fun addOrder(
         customerName: String,
         customerEmail: String,
-        price: Float,
+        price: Double,
         createdAt: Long
     ): Order? {
         var statement: InsertStatement<Number>? = null
@@ -222,6 +347,20 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
             }.mapNotNull { it.rowToItem() }
         }
     }
+
+    override suspend fun getTasks(): List<Task> {
+        return dbQuery {
+            Tasks.selectAll().mapNotNull { it.rowToTask() }
+        }
+    }
+
+    override suspend fun getTasks(itemId: Int): List<Task> {
+        return dbQuery {
+            Tasks.select {
+                Tasks.itemId.eq((itemId))
+            }.mapNotNull { it.rowToTask() }
+        }
+    }
 }
 
 fun ResultRow.rowToTodo() = Todo(
@@ -254,7 +393,7 @@ fun ResultRow.rowToTaskTemplate() = TaskTemplate(
 )
 
 fun ResultRow.rowToOrder() = Order(
-    id = this[ItemTemplates.id],
+    id = this[Orders.id],
     customerName = this[Orders.customerName],
     customerEmail = this[Orders.customerEmail],
     price = this[Orders.price],
@@ -268,3 +407,13 @@ fun ResultRow.rowToItem() = Item(
     title = this[Items.title],
     info = this[Items.info]
 )
+
+fun ResultRow.rowToTask() = Task(
+    id = this[Tasks.id],
+    itemId = this[Tasks.itemId],
+    title = this[Tasks.title],
+    workerType = this[Tasks.workerType],
+    timeToComplete = this[Tasks.timeToComplete],
+    status = this[Tasks.status]
+)
+

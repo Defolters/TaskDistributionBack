@@ -3,10 +3,7 @@ package io.defolters
 import auth.JwtService
 import auth.hash
 import io.defolters.auth.MySession
-import io.defolters.routes.itemTemplatesRoute
-import io.defolters.routes.itemsRoute
-import io.defolters.routes.ordersRoute
-import io.defolters.routes.taskTemplatesRoute
+import io.defolters.routes.*
 import io.ktor.application.Application
 import io.ktor.application.install
 import io.ktor.auth.Authentication
@@ -72,6 +69,7 @@ fun Application.module() {
         taskTemplatesRoute(db)
         ordersRoute(db)
         itemsRoute(db)
+        tasksRoute(db)
     }
 }
 

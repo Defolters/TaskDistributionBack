@@ -4,6 +4,6 @@ data class Order(
     val id: Int,
     val customerName: String,
     val customerEmail: String,
-    val price: Float,
+    val price: Double,
     val createdAt: Long
 )
