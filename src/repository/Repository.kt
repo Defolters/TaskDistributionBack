@@ -13,7 +13,7 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskTemplateRepository, OrderRepository,
-    ItemRepository, TaskRepository {
+    ItemRepository, TaskRepository, WorkerTypeRepository {
 
     override suspend fun addUser(email: String, displayName: String, passwordHash: String): User? {
         var statement: InsertStatement<Number>? = null
@@ -129,7 +129,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
         title: String,
         itemTemplateId: Int,
         taskTemplateDependencyId: Int?,
-        workerType: String,
+        workerTypeId: Int,
         timeToComplete: Int,
         isAdditional: Boolean
     ): TaskTemplate? {
@@ -139,7 +139,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                 it[TaskTemplates.title] = title
                 it[TaskTemplates.itemTemplateId] = itemTemplateId
                 it[TaskTemplates.taskTemplateDependencyId] = taskTemplateDependencyId
-                it[TaskTemplates.workerType] = workerType
+                it[TaskTemplates.workerTypeId] = workerTypeId
                 it[TaskTemplates.timeToComplete] = timeToComplete
                 it[TaskTemplates.isAdditional] = isAdditional
             }
@@ -213,6 +213,8 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                 // create tasks for each item
                 val setOfTasks = mutableSetOf<Int>()
 
+                //set dependency to previous task
+                var previousTaskId = 0
                 //create mandatory tasks
                 var i = 0
                 while (mandatoryTaskTemplates.isNotEmpty()) {
@@ -224,12 +226,14 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                         // create task
                         val taskInsertStatement = Tasks.insert {
                             it[Tasks.itemId] = newItem.id
+                            it[Tasks.taskDependencyId] = previousTaskId
+                            it[Tasks.workerTypeId] = taskTemplate.workerTypeId
                             it[Tasks.title] = taskTemplate.title
-                            it[Tasks.workerType] = taskTemplate.workerType
                             it[Tasks.timeToComplete] = taskTemplate.timeToComplete
                             it[Tasks.status] = TaskStatus.NEW
                         }
                         val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
+                        previousTaskId = newTask.id
 
                         logger.log(Level.INFO, "task $newTask")
                         setOfTasks.add(taskTemplate.id)
@@ -271,12 +275,14 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                         // create task
                         val taskInsertStatement = Tasks.insert {
                             it[Tasks.itemId] = newItem.id
+                            it[Tasks.taskDependencyId] = previousTaskId
                             it[Tasks.title] = taskTemplate.title
-                            it[Tasks.workerType] = taskTemplate.workerType
+                            it[Tasks.workerTypeId] = taskTemplate.workerTypeId
                             it[Tasks.timeToComplete] = taskTemplate.timeToComplete
                             it[Tasks.status] = TaskStatus.NEW
                         }
                         val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
+                        previousTaskId = newTask.id
 
                         logger.log(Level.INFO, "task $newTask")
                         setOfTasks.add(taskTemplate.id)
@@ -360,6 +366,30 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
             }.mapNotNull { it.rowToTask() }
         }
     }
+
+    override suspend fun addWorkerType(title: String): WorkerType? {
+        var statement: InsertStatement<Number>? = null
+        dbQuery {
+            statement = WorkerTypes.insert {
+                it[WorkerTypes.title] = title
+            }
+        }
+        return statement?.resultedValues?.get(0)?.rowToWorkerType()
+    }
+
+    override suspend fun deleteWorkerType(id: Int) {
+        dbQuery {
+            WorkerTypes.deleteWhere {
+                WorkerTypes.id.eq(id)
+            }
+        }
+    }
+
+    override suspend fun getWorkerTypes(): List<WorkerType> {
+        return dbQuery {
+            WorkerTypes.selectAll().mapNotNull { it.rowToWorkerType() }
+        }
+    }
 }
 
 fun ResultRow.rowToTodo() = Todo(
@@ -386,7 +416,7 @@ fun ResultRow.rowToTaskTemplate() = TaskTemplate(
     title = this[TaskTemplates.title],
     itemTemplateId = this[TaskTemplates.itemTemplateId],
     taskTemplateDependencyId = this[TaskTemplates.taskTemplateDependencyId],
-    workerType = this[TaskTemplates.workerType],
+    workerTypeId = this[TaskTemplates.workerTypeId],
     timeToComplete = this[TaskTemplates.timeToComplete],
     isAdditional = this[TaskTemplates.isAdditional]
 )
@@ -410,9 +440,15 @@ fun ResultRow.rowToItem() = Item(
 fun ResultRow.rowToTask() = Task(
     id = this[Tasks.id],
     itemId = this[Tasks.itemId],
+    taskDependencyId = this[Tasks.taskDependencyId],
+    workerTypeId = this[Tasks.workerTypeId],
     title = this[Tasks.title],
-    workerType = this[Tasks.workerType],
     timeToComplete = this[Tasks.timeToComplete],
     status = this[Tasks.status]
+)
+
+fun ResultRow.rowToWorkerType() = WorkerType(
+    id = this[WorkerTypes.id],
+    title = this[WorkerTypes.title]
 )
 

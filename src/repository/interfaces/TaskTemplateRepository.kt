@@ -7,7 +7,7 @@ interface TaskTemplateRepository : RepositoryInterface {
         title: String,
         itemTemplateId: Int,
         taskTemplateDependencyId: Int?,
-        workerType: String,
+        workerTypeId: Int,
         timeToComplete: Int,
         isAdditional: Boolean
     ): TaskTemplate?

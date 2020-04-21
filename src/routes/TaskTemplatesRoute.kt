@@ -33,7 +33,7 @@ fun Route.taskTemplatesRoute(db: TaskTemplateRepository) {
             val itemTemplateId = taskTemplateParameters["itemTemplateId"]
                 ?: return@post call.respond(HttpStatusCode.BadRequest, "Missing itemTemplateId")
             val taskTemplateDependencyId = taskTemplateParameters["taskTemplateDependencyId"]
-            val workerType = taskTemplateParameters["workerType"]
+            val workerTypeId = taskTemplateParameters["workerTypeId"]
                 ?: return@post call.respond(HttpStatusCode.BadRequest, "Missing workerType")
             val timeToComplete = taskTemplateParameters["timeToComplete"]
                 ?: return@post call.respond(HttpStatusCode.BadRequest, "Missing timeToComplete")
@@ -52,7 +52,7 @@ fun Route.taskTemplatesRoute(db: TaskTemplateRepository) {
                     title,
                     itemTemplateId.toInt(),
                     taskTemplateDependencyId?.toInt(),
-                    workerType,
+                    workerTypeId.toInt(),
                     timeToComplete.toInt(),
                     isAdditional.toBoolean()
                 )?.let { taskTemplate ->
