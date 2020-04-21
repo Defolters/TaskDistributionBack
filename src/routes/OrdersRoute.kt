@@ -41,8 +41,9 @@ fun Route.ordersRoute(db: OrderRepository) {
             try {
                 val orderJSON = call.receive<OrderJSON>()
                 val time = measureTimeMillis {
-                    val order = db.addOrder(orderJSON, date.time)
-                    call.respond(HttpStatusCode.OK, order)
+                    db.addOrder(orderJSON, date.time)?.let { order ->
+                        call.respond(order)
+                    }
                 }
                 logger.log(Level.INFO, "time to create order: $time")
 

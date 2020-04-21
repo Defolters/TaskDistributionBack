@@ -42,13 +42,19 @@ class UserCreateRoute
 @Location(USER_DELETE)
 class UserDeleteRoute
 
+data class UserJSON(val email: String, val password: String)
+
 @KtorExperimentalLocationsAPI
 fun Route.usersRoute(db: UserRepository, jwtService: JwtService, hashFunction: (String) -> String) {
     post<UserLoginRoute> {
-        val signinParameters = call.receive<Parameters>()
-        val password =
-            signinParameters["password"] ?: return@post call.respond(HttpStatusCode.Unauthorized, "Missing Fields")
-        val email = signinParameters["email"] ?: return@post call.respond(HttpStatusCode.Unauthorized, "Missing Fields")
+
+        val user = call.receive<UserJSON>()
+        val password = user.password
+        val email = user.email
+//        val signinParameters = call.receive<Parameters>()
+//        val password =
+//            signinParameters["password"] ?: return@post call.respond(HttpStatusCode.Unauthorized, "Missing Fields")
+//        val email = signinParameters["email"] ?: return@post call.respond(HttpStatusCode.Unauthorized, "Missing Fields")
 
         val hash = hashFunction(password)
 

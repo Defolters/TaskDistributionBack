@@ -4,7 +4,6 @@ import io.defolters.models.*
 import io.defolters.repository.interfaces.*
 import io.defolters.repository.tables.*
 import io.defolters.routes.OrderJSON
-import io.ktor.features.NotFoundException
 import models.Todo
 import models.User
 import org.jetbrains.exposed.sql.*
@@ -248,7 +247,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                 for (j in 0 until idsList.size) {
                     // we should accept only existing tasks
                     val taskTemplate = additionalTaskTemplates.find { it.id == idsList[j] }
-                        ?: throw NotFoundException()
+                        ?: throw Exception()
 
                     taskTemplate.taskTemplateDependencyId?.let { id ->
                         if (id !in setOfTasks) { // if wew didn't it yet

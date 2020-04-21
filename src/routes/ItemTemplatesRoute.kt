@@ -20,6 +20,10 @@ const val ITEM_TEMPLATES = "$API_VERSION/item-templates"
 class ItemTemplatesRoute
 
 @KtorExperimentalLocationsAPI
+@Location("$ITEM_TEMPLATES/{id}")
+data class ItemTemplatesIdRoute(val id: Int)
+
+@KtorExperimentalLocationsAPI
 fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
     authenticate("jwt") {
         post<ItemTemplatesRoute> {
@@ -48,6 +52,18 @@ fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
             try {
                 val itemTemplates = db.getItemTemplates()
                 call.respond(itemTemplates)
+            } catch (e: Throwable) {
+                application.log.error("Failed to get ItemTemplates", e)
+                call.respond(HttpStatusCode.BadRequest, "Problems getting ItemTemplates")
+            }
+        }
+        get<ItemTemplatesIdRoute> { itemTemplatesIdRoute ->
+            call.getActiveUser(db) ?: return@get
+
+            try {
+                db.findItemTemplate(itemTemplatesIdRoute.id)?.let { itemTemplate ->
+                    call.respond(itemTemplate)
+                }
             } catch (e: Throwable) {
                 application.log.error("Failed to get ItemTemplates", e)
                 call.respond(HttpStatusCode.BadRequest, "Problems getting ItemTemplates")

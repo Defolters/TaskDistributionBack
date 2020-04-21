@@ -3,13 +3,16 @@ package io.defolters
 import auth.JwtService
 import auth.hash
 import io.defolters.auth.MySession
+import io.defolters.optimization.TaskOptimizer
 import io.defolters.routes.*
 import io.ktor.application.Application
 import io.ktor.application.install
 import io.ktor.auth.Authentication
 import io.ktor.auth.jwt.jwt
-import io.ktor.features.ContentNegotiation
+import io.ktor.features.*
 import io.ktor.gson.gson
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.locations.KtorExperimentalLocationsAPI
 import io.ktor.locations.Locations
 import io.ktor.routing.routing
@@ -31,10 +34,35 @@ fun Application.module() {
     install(Locations) {
     }
 
+    install(CallLogging)
+    install(DefaultHeaders)
+    install(ConditionalHeaders)
+    install(PartialContent)
+    install(AutoHeadResponse)
     install(Sessions) {
         cookie<MySession>("MY_SESSION") {
             cookie.extensions["SameSite"] = "lax"
         }
+    }
+
+    install(CORS)
+    {
+        method(HttpMethod.Get)
+        method(HttpMethod.Put)
+        method(HttpMethod.Post)
+        method(HttpMethod.Patch)
+        method(HttpMethod.Delete)
+        method(HttpMethod.Options)
+        header(HttpHeaders.ContentType)
+        header(HttpHeaders.XTotalCount)
+        header(HttpHeaders.ContentRange)
+        header(HttpHeaders.Authorization)
+        header(HttpHeaders.ContentLength)
+        header(HttpHeaders.AccessControlAllowOrigin)
+        header(HttpHeaders.AccessControlAllowHeaders)
+        header(HttpHeaders.AccessControlAllowCredentials)
+        allowCredentials = true
+        anyHost()
     }
 
     DatabaseFactory.init()
@@ -42,6 +70,7 @@ fun Application.module() {
     val jwtService = JwtService()
     val hashFunction = { s: String -> hash(s) }
 
+    TaskOptimizer.minimalJobshopSat()
 
     install(Authentication) {
         jwt("jwt") {
