@@ -70,7 +70,7 @@ fun Application.module() {
     val jwtService = JwtService()
     val hashFunction = { s: String -> hash(s) }
 
-    TaskOptimizer.minimalJobshopSat()
+    TaskOptimizer.optimizeTest()
 
     install(Authentication) {
         jwt("jwt") {
@@ -99,6 +99,7 @@ fun Application.module() {
         ordersRoute(db)
         itemsRoute(db)
         tasksRoute(db)
+        workerTypesRoute(db)
     }
 }
 

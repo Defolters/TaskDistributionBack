@@ -390,6 +390,16 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
             WorkerTypes.selectAll().mapNotNull { it.rowToWorkerType() }
         }
     }
+
+    override suspend fun findWorkerType(workerTypeId: Int?): WorkerType? {
+        if (workerTypeId == null) return null
+
+        return dbQuery {
+            WorkerTypes.select {
+                WorkerTypes.id.eq(workerTypeId)
+            }.mapNotNull { it.rowToWorkerType() }.singleOrNull()
+        }
+    }
 }
 
 fun ResultRow.rowToTodo() = Todo(
