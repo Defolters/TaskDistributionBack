@@ -133,6 +133,8 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
         timeToComplete: Int,
         isAdditional: Boolean
     ): TaskTemplate? {
+        //check dependency and then insert
+
         var statement: InsertStatement<Number>? = null
         dbQuery {
             statement = TaskTemplates.insert {
@@ -166,6 +168,14 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
             TaskTemplates.select {
                 TaskTemplates.itemTemplateId.eq((itemTemplateId))
             }.mapNotNull { it.rowToTaskTemplate() }
+        }
+    }
+
+    override suspend fun findTaskTemplate(id: Int): TaskTemplate? {
+        return dbQuery {
+            TaskTemplates.select {
+                TaskTemplates.id.eq(id)
+            }.mapNotNull { it.rowToTaskTemplate() }.singleOrNull()
         }
     }
 
@@ -244,8 +254,8 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
                 //create additional list
                 val additionalNewList = mutableListOf<TaskTemplate>()
-                val idsList = item.taskTemplatesIds.toMutableList()
-                idsList.sort()
+                val idsList = item.taskTemplatesIds.map { it.id }.toMutableList()
+                idsList.sortBy { it }
 
                 logger.log(Level.INFO, "size ${idsList.size}")
                 for (j in 0 until idsList.size) {
@@ -319,8 +329,26 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
     override suspend fun deleteOrder(id: Int) {
         dbQuery {
+            // delete order
             Orders.deleteWhere {
                 Orders.id.eq(id)
+            }
+
+            // get items
+            val items = Items.select {
+                Items.orderId.eq((id))
+            }.mapNotNull { it.rowToItemTemplate() }
+
+            // delete tasks
+            items.forEach { item ->
+                Tasks.deleteWhere {
+                    Tasks.itemId.eq(item.id)
+                }
+            }
+
+            // delete items
+            Items.deleteWhere {
+                Items.orderId.eq(id)
             }
         }
     }
@@ -328,6 +356,14 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
     override suspend fun getOrders(): List<Order> {
         return dbQuery {
             Orders.selectAll().mapNotNull { it.rowToOrder() }
+        }
+    }
+
+    override suspend fun findOrder(id: Int): Order? {
+        return dbQuery {
+            Orders.select {
+                Orders.id.eq(id)
+            }.mapNotNull { it.rowToOrder() }.singleOrNull()
         }
     }
 

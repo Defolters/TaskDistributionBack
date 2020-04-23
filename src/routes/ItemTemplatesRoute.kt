@@ -7,7 +7,6 @@ import io.ktor.application.call
 import io.ktor.application.log
 import io.ktor.auth.authenticate
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.Parameters
 import io.ktor.locations.*
 import io.ktor.request.receive
 import io.ktor.response.respond
@@ -23,17 +22,18 @@ class ItemTemplatesRoute
 @Location("$ITEM_TEMPLATES/{id}")
 data class ItemTemplatesIdRoute(val id: Int)
 
+data class ItemTemplateJSON(val title: String?, val id: List<Int>?)
+
 @KtorExperimentalLocationsAPI
 fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
     authenticate("jwt") {
         post<ItemTemplatesRoute> {
             call.getActiveUser(db) ?: return@post
 
-            val itemTemplateParameters = call.receive<Parameters>()
+            val jsonData = call.receive<ItemTemplateJSON>()
 
-            val title = itemTemplateParameters["title"]
+            val title = jsonData.title
                 ?: return@post call.respond(HttpStatusCode.BadRequest, "Missing title")
-
 
             try {
                 db.addItemTemplate(title)?.let { itemTemplate ->
@@ -72,14 +72,15 @@ fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
         delete<ItemTemplatesRoute> {
             call.getActiveUser(db) ?: return@delete
 
-            val itemTemplateParameters = call.receive<Parameters>()
-            val itemTemplateId = itemTemplateParameters["id"]
-                ?: return@delete call.respond(
-                    HttpStatusCode.BadRequest, "Missing itemTemplate Id"
-                )
+            val jsonData = call.receive<ItemTemplateJSON>()
+
+            val ids = jsonData.id
+                ?: return@delete call.respond(HttpStatusCode.BadRequest, "Missing ids")
 
             try {
-                db.deleteItemTemplate(itemTemplateId.toInt())
+                ids.forEach { id ->
+                    db.deleteItemTemplate(id)
+                }
                 call.respond(HttpStatusCode.OK)
             } catch (e: Throwable) {
                 application.log.error("Failed to delete itemTemplate", e)

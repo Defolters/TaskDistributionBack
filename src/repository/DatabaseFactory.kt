@@ -22,6 +22,7 @@ object DatabaseFactory {
             SchemaUtils.create(Orders)
             SchemaUtils.create(Items)
             SchemaUtils.create(Tasks)
+            SchemaUtils.create(WorkerTypes)
         }
     }
 

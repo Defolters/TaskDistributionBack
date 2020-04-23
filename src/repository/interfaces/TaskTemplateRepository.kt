@@ -15,4 +15,5 @@ interface TaskTemplateRepository : RepositoryInterface {
     suspend fun deleteTaskTemplate(id: Int)
     suspend fun getTaskTemplates(): List<TaskTemplate>
     suspend fun getTaskTemplates(itemTemplateId: Int): List<TaskTemplate>
+    suspend fun findTaskTemplate(id: Int): TaskTemplate?
 }

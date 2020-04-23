@@ -7,7 +7,6 @@ import io.ktor.application.call
 import io.ktor.application.log
 import io.ktor.auth.authenticate
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.Parameters
 import io.ktor.locations.*
 import io.ktor.request.receive
 import io.ktor.response.respond
@@ -23,17 +22,18 @@ class WorkerTypesRoute
 @Location("$WORKER_TYPES/{id}")
 data class WorkerTypesIdRoute(val id: Int)
 
+data class WorkerTypeJSON(val title: String?, val id: List<Int>?)
+
 @KtorExperimentalLocationsAPI
 fun Route.workerTypesRoute(db: WorkerTypeRepository) {
     authenticate("jwt") {
         post<WorkerTypesRoute> {
             call.getActiveUser(db) ?: return@post
 
-            val workerTypeParameters = call.receive<Parameters>()
+            val jsonData = call.receive<WorkerTypeJSON>()
 
-            val title = workerTypeParameters["title"]
+            val title = jsonData.title
                 ?: return@post call.respond(HttpStatusCode.BadRequest, "Missing title")
-
 
             try {
                 db.addWorkerType(title)?.let { workerType ->
@@ -69,11 +69,18 @@ fun Route.workerTypesRoute(db: WorkerTypeRepository) {
                 call.respond(HttpStatusCode.BadRequest, "Problems getting WorkerType")
             }
         }
-        delete<WorkerTypesIdRoute> { workerTypesIdRoute ->
+        delete<WorkerTypesRoute> {
             call.getActiveUser(db) ?: return@delete
 
+            val jsonData = call.receive<WorkerTypeJSON>()
+
+            val ids = jsonData.id
+                ?: return@delete call.respond(HttpStatusCode.BadRequest, "Missing ids")
+
             try {
-                db.deleteWorkerType(workerTypesIdRoute.id)
+                ids.forEach { id ->
+                    db.deleteWorkerType(id)
+                }
                 call.respond(HttpStatusCode.OK)
             } catch (e: Throwable) {
                 application.log.error("Failed to delete WorkerType", e)

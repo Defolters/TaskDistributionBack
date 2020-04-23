@@ -7,7 +7,6 @@ import io.ktor.application.call
 import io.ktor.application.log
 import io.ktor.auth.authenticate
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.Parameters
 import io.ktor.locations.*
 import io.ktor.request.receive
 import io.ktor.response.respond
@@ -23,8 +22,13 @@ const val ORDERS = "$API_VERSION/orders"
 @Location(ORDERS)
 class OrdersRoute
 
-data class OrderJSON(val customerName: String, val customerEmail: String, val items: List<ItemJSON>)
-data class ItemJSON(val itemTemplateId: Int, val info: String, val price: Double, val taskTemplatesIds: List<Int>)
+@KtorExperimentalLocationsAPI
+@Location("$ORDERS/{id}")
+data class OrdersIdRoute(val id: Int)
+
+data class OrderJSON(val customerName: String, val customerEmail: String, val items: List<ItemJSON>, val id: List<Int>?)
+data class ItemJSON(val itemTemplateId: Int, val info: String, val price: Double, val taskTemplatesIds: List<TaskJSON>)
+data class TaskJSON(val id: Int)
 
 @KtorExperimentalLocationsAPI
 fun Route.ordersRoute(db: OrderRepository) {
@@ -37,7 +41,6 @@ fun Route.ordersRoute(db: OrderRepository) {
             val logger = Logger.getLogger("APP")
             logger.log(Level.INFO, "date: $date")
 
-            // check fields?
             try {
                 val orderJSON = call.receive<OrderJSON>()
                 val time = measureTimeMillis {
@@ -63,17 +66,30 @@ fun Route.ordersRoute(db: OrderRepository) {
                 call.respond(HttpStatusCode.BadRequest, "Problems getting Order")
             }
         }
+        get<OrdersIdRoute> { params ->
+            call.getActiveUser(db) ?: return@get
+
+            try {
+                db.findOrder(params.id)?.let { order ->
+                    call.respond(order)
+                }
+            } catch (e: Throwable) {
+                application.log.error("Failed to get Order", e)
+                call.respond(HttpStatusCode.BadRequest, "Problems getting Order")
+            }
+        }
         delete<OrdersRoute> {
             call.getActiveUser(db) ?: return@delete
 
-            val ordersParameters = call.receive<Parameters>()
-            val orderId = ordersParameters["id"]
-                ?: return@delete call.respond(
-                    HttpStatusCode.BadRequest, "Missing orderId"
-                )
+            val jsonData = call.receive<WorkerTypeJSON>()
+
+            val ids = jsonData.id
+                ?: return@delete call.respond(HttpStatusCode.BadRequest, "Missing ids")
 
             try {
-                db.deleteOrder(orderId.toInt())
+                ids.forEach { id ->
+                    db.deleteOrder(id)
+                }
                 call.respond(HttpStatusCode.OK)
             } catch (e: Throwable) {
                 application.log.error("Failed to delete Order", e)
