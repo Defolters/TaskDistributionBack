@@ -16,4 +16,9 @@ interface OrderRepository : RepositoryInterface {
     suspend fun deleteOrder(id: Int)
     suspend fun getOrders(): List<Order>
     suspend fun findOrder(id: Int): Order?
+    suspend fun updateOrder(
+        id: Int,
+        customerName: String,
+        customerEmail: String
+    ): Order?
 }

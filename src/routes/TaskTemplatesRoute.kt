@@ -23,13 +23,14 @@ class TaskTemplatesRoute
 data class TaskTemplatesIdRoute(val id: Int)
 
 data class TaskTemplateJSON(
+    val id: Int,
     val itemTemplateId: Int,
     val taskTemplateDependencyId: Int?,
     val workerTypeId: Int,
     val title: String,
     val timeToComplete: Int,
     val isAdditional: Boolean?,
-    val id: List<Int>?
+    val ids: List<Int>?
 )
 
 @KtorExperimentalLocationsAPI
@@ -100,7 +101,7 @@ fun Route.taskTemplatesRoute(db: TaskTemplateRepository) {
 
             val jsonData = call.receive<TaskTemplateJSON>()
 
-            val ids = jsonData.id
+            val ids = jsonData.ids
                 ?: return@delete call.respond(HttpStatusCode.BadRequest, "Missing ids")
 
             try {
@@ -111,6 +112,28 @@ fun Route.taskTemplatesRoute(db: TaskTemplateRepository) {
             } catch (e: Throwable) {
                 application.log.error("Failed to delete TaskTemplate", e)
                 call.respond(HttpStatusCode.BadRequest, "Problems Deleting TaskTemplate")
+            }
+        }
+        put<TaskTemplatesRoute> {
+            call.getActiveUser(db) ?: return@put
+
+            val jsonData = call.receive<TaskTemplateJSON>()
+
+            try {
+                db.updateTaskTemplate(
+                    jsonData.id,
+                    jsonData.title,
+                    jsonData.itemTemplateId,
+                    jsonData.taskTemplateDependencyId,
+                    jsonData.workerTypeId,
+                    jsonData.timeToComplete,
+                    jsonData.isAdditional ?: false
+                )?.let {
+                    call.respond(it)
+                }
+            } catch (e: Throwable) {
+                application.log.error("Failed to update TaskTemplate", e)
+                call.respond(HttpStatusCode.BadRequest, "Problems updating TaskTemplate")
             }
         }
     }

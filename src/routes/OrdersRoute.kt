@@ -26,7 +26,14 @@ class OrdersRoute
 @Location("$ORDERS/{id}")
 data class OrdersIdRoute(val id: Int)
 
-data class OrderJSON(val customerName: String, val customerEmail: String, val items: List<ItemJSON>, val id: List<Int>?)
+data class OrderJSON(
+    val id: Int,
+    val customerName: String,
+    val customerEmail: String,
+    val items: List<ItemJSON>,
+    val ids: List<Int>?
+)
+
 data class ItemJSON(val itemTemplateId: Int, val info: String, val price: Double, val taskTemplatesIds: List<TaskJSON>)
 data class TaskJSON(val id: Int)
 
@@ -81,9 +88,9 @@ fun Route.ordersRoute(db: OrderRepository) {
         delete<OrdersRoute> {
             call.getActiveUser(db) ?: return@delete
 
-            val jsonData = call.receive<WorkerTypeJSON>()
+            val jsonData = call.receive<OrderJSON>()
 
-            val ids = jsonData.id
+            val ids = jsonData.ids
                 ?: return@delete call.respond(HttpStatusCode.BadRequest, "Missing ids")
 
             try {
@@ -94,6 +101,20 @@ fun Route.ordersRoute(db: OrderRepository) {
             } catch (e: Throwable) {
                 application.log.error("Failed to delete Order", e)
                 call.respond(HttpStatusCode.BadRequest, "Problems Deleting Order")
+            }
+        }
+        put<OrdersRoute> {
+            call.getActiveUser(db) ?: return@put
+
+            val jsonData = call.receive<OrderJSON>()
+
+            try {
+                db.updateOrder(jsonData.id, jsonData.customerName, jsonData.customerEmail)?.let {
+                    call.respond(it)
+                }
+            } catch (e: Throwable) {
+                application.log.error("Failed to update WorkerType", e)
+                call.respond(HttpStatusCode.BadRequest, "Problems updating WorkerType")
             }
         }
     }

@@ -22,7 +22,7 @@ class WorkerTypesRoute
 @Location("$WORKER_TYPES/{id}")
 data class WorkerTypesIdRoute(val id: Int)
 
-data class WorkerTypeJSON(val title: String?, val id: List<Int>?)
+data class WorkerTypeJSON(val id: Int, val title: String, val ids: List<Int>?)
 
 @KtorExperimentalLocationsAPI
 fun Route.workerTypesRoute(db: WorkerTypeRepository) {
@@ -32,11 +32,8 @@ fun Route.workerTypesRoute(db: WorkerTypeRepository) {
 
             val jsonData = call.receive<WorkerTypeJSON>()
 
-            val title = jsonData.title
-                ?: return@post call.respond(HttpStatusCode.BadRequest, "Missing title")
-
             try {
-                db.addWorkerType(title)?.let { workerType ->
+                db.addWorkerType(jsonData.title)?.let { workerType ->
                     workerType.id.let {
                         call.respond(HttpStatusCode.OK, workerType)
                     }
@@ -74,7 +71,7 @@ fun Route.workerTypesRoute(db: WorkerTypeRepository) {
 
             val jsonData = call.receive<WorkerTypeJSON>()
 
-            val ids = jsonData.id
+            val ids = jsonData.ids
                 ?: return@delete call.respond(HttpStatusCode.BadRequest, "Missing ids")
 
             try {
@@ -85,6 +82,20 @@ fun Route.workerTypesRoute(db: WorkerTypeRepository) {
             } catch (e: Throwable) {
                 application.log.error("Failed to delete WorkerType", e)
                 call.respond(HttpStatusCode.BadRequest, "Problems Deleting WorkerType")
+            }
+        }
+        put<WorkerTypesRoute> {
+            call.getActiveUser(db) ?: return@put
+
+            val jsonData = call.receive<WorkerTypeJSON>()
+
+            try {
+                db.updateWorkerType(jsonData.id, jsonData.title)?.let {
+                    call.respond(it)
+                }
+            } catch (e: Throwable) {
+                application.log.error("Failed to update WorkerType", e)
+                call.respond(HttpStatusCode.BadRequest, "Problems updating WorkerType")
             }
         }
     }

@@ -22,7 +22,7 @@ class ItemTemplatesRoute
 @Location("$ITEM_TEMPLATES/{id}")
 data class ItemTemplatesIdRoute(val id: Int)
 
-data class ItemTemplateJSON(val title: String?, val id: List<Int>?)
+data class ItemTemplateJSON(val id: Int, val title: String, val ids: List<Int>?)
 
 @KtorExperimentalLocationsAPI
 fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
@@ -33,7 +33,6 @@ fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
             val jsonData = call.receive<ItemTemplateJSON>()
 
             val title = jsonData.title
-                ?: return@post call.respond(HttpStatusCode.BadRequest, "Missing title")
 
             try {
                 db.addItemTemplate(title)?.let { itemTemplate ->
@@ -74,7 +73,7 @@ fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
 
             val jsonData = call.receive<ItemTemplateJSON>()
 
-            val ids = jsonData.id
+            val ids = jsonData.ids
                 ?: return@delete call.respond(HttpStatusCode.BadRequest, "Missing ids")
 
             try {
@@ -83,8 +82,22 @@ fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
                 }
                 call.respond(HttpStatusCode.OK)
             } catch (e: Throwable) {
-                application.log.error("Failed to delete itemTemplate", e)
-                call.respond(HttpStatusCode.BadRequest, "Problems Deleting itemTemplate")
+                application.log.error("Failed to delete ItemTemplate", e)
+                call.respond(HttpStatusCode.BadRequest, "Problems Deleting ItemTemplate")
+            }
+        }
+        put<ItemTemplatesRoute> {
+            call.getActiveUser(db) ?: return@put
+
+            val jsonData = call.receive<ItemTemplateJSON>()
+
+            try {
+                db.updateItemTemplate(jsonData.id, jsonData.title)?.let {
+                    call.respond(it)
+                }
+            } catch (e: Throwable) {
+                application.log.error("Failed to update ItemTemplate", e)
+                call.respond(HttpStatusCode.BadRequest, "Problems updating ItemTemplate")
             }
         }
     }

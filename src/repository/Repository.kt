@@ -111,16 +111,27 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
     override suspend fun getItemTemplates(): List<ItemTemplate> {
         return dbQuery {
-            ItemTemplates.selectAll().mapNotNull { it.rowToItemTemplate() }
+            ItemTemplates.selectAll().mapNotNull { it.rowToItemTemplate() }.sortedBy { it.id }
         }
     }
 
-    override suspend fun findItemTemplate(itemTemplateId: Int?): ItemTemplate? {
-        if (itemTemplateId == null) return null
+    override suspend fun findItemTemplate(id: Int?): ItemTemplate? {
+        if (id == null) return null
 
         return dbQuery {
             ItemTemplates.select {
-                ItemTemplates.id.eq(itemTemplateId)
+                ItemTemplates.id.eq(id)
+            }.mapNotNull { it.rowToItemTemplate() }.singleOrNull()
+        }
+    }
+
+    override suspend fun updateItemTemplate(id: Int, title: String): ItemTemplate? {
+        return dbQuery {
+            ItemTemplates.update({ ItemTemplates.id eq id }) {
+                it[ItemTemplates.title] = title
+            }
+            ItemTemplates.select {
+                ItemTemplates.id.eq(id)
             }.mapNotNull { it.rowToItemTemplate() }.singleOrNull()
         }
     }
@@ -159,7 +170,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
     override suspend fun getTaskTemplates(): List<TaskTemplate> {
         return dbQuery {
-            TaskTemplates.selectAll().mapNotNull { it.rowToTaskTemplate() }
+            TaskTemplates.selectAll().mapNotNull { it.rowToTaskTemplate() }.sortedBy { it.id }
         }
     }
 
@@ -173,6 +184,30 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
     override suspend fun findTaskTemplate(id: Int): TaskTemplate? {
         return dbQuery {
+            TaskTemplates.select {
+                TaskTemplates.id.eq(id)
+            }.mapNotNull { it.rowToTaskTemplate() }.singleOrNull()
+        }
+    }
+
+    override suspend fun updateTaskTemplate(
+        id: Int,
+        title: String,
+        itemTemplateId: Int,
+        taskTemplateDependencyId: Int?,
+        workerTypeId: Int,
+        timeToComplete: Int,
+        isAdditional: Boolean
+    ): TaskTemplate? {
+        return dbQuery {
+            TaskTemplates.update({ TaskTemplates.id eq id }) {
+                it[TaskTemplates.title] = title
+                it[TaskTemplates.itemTemplateId] = itemTemplateId
+                it[TaskTemplates.taskTemplateDependencyId] = taskTemplateDependencyId
+                it[TaskTemplates.workerTypeId] = workerTypeId
+                it[TaskTemplates.timeToComplete] = timeToComplete
+                it[TaskTemplates.isAdditional] = isAdditional
+            }
             TaskTemplates.select {
                 TaskTemplates.id.eq(id)
             }.mapNotNull { it.rowToTaskTemplate() }.singleOrNull()
@@ -355,12 +390,24 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
     override suspend fun getOrders(): List<Order> {
         return dbQuery {
-            Orders.selectAll().mapNotNull { it.rowToOrder() }
+            Orders.selectAll().mapNotNull { it.rowToOrder() }.sortedBy { it.id }
         }
     }
 
     override suspend fun findOrder(id: Int): Order? {
         return dbQuery {
+            Orders.select {
+                Orders.id.eq(id)
+            }.mapNotNull { it.rowToOrder() }.singleOrNull()
+        }
+    }
+
+    override suspend fun updateOrder(id: Int, customerName: String, customerEmail: String): Order? {
+        return dbQuery {
+            Orders.update({ Orders.id eq id }) {
+                it[Orders.customerName] = customerName
+                it[Orders.customerEmail] = customerEmail
+            }
             Orders.select {
                 Orders.id.eq(id)
             }.mapNotNull { it.rowToOrder() }.singleOrNull()
@@ -377,7 +424,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
     override suspend fun getItems(): List<Item> {
         return dbQuery {
-            Items.selectAll().mapNotNull { it.rowToItem() }
+            Items.selectAll().mapNotNull { it.rowToItem() }.sortedBy { it.id }
         }
     }
 
@@ -391,7 +438,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
     override suspend fun getTasks(): List<Task> {
         return dbQuery {
-            Tasks.selectAll().mapNotNull { it.rowToTask() }
+            Tasks.selectAll().mapNotNull { it.rowToTask() }.sortedBy { it.id }
         }
     }
 
@@ -423,16 +470,27 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
     override suspend fun getWorkerTypes(): List<WorkerType> {
         return dbQuery {
-            WorkerTypes.selectAll().mapNotNull { it.rowToWorkerType() }
+            WorkerTypes.selectAll().mapNotNull { it.rowToWorkerType() }.sortedBy { it.id }
         }
     }
 
-    override suspend fun findWorkerType(workerTypeId: Int?): WorkerType? {
-        if (workerTypeId == null) return null
+    override suspend fun findWorkerType(id: Int?): WorkerType? {
+        if (id == null) return null
 
         return dbQuery {
             WorkerTypes.select {
-                WorkerTypes.id.eq(workerTypeId)
+                WorkerTypes.id.eq(id)
+            }.mapNotNull { it.rowToWorkerType() }.singleOrNull()
+        }
+    }
+
+    override suspend fun updateWorkerType(id: Int, title: String): WorkerType? {
+        return dbQuery {
+            WorkerTypes.update({ WorkerTypes.id eq id }) {
+                it[WorkerTypes.title] = title
+            }
+            WorkerTypes.select {
+                WorkerTypes.id.eq(id)
             }.mapNotNull { it.rowToWorkerType() }.singleOrNull()
         }
     }
