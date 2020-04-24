@@ -436,6 +436,16 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
         }
     }
 
+    override suspend fun findItem(id: Int?): Item? {
+        if (id == null) return null
+
+        return dbQuery {
+            Items.select {
+                Items.id.eq(id)
+            }.mapNotNull { it.rowToItem() }.singleOrNull()
+        }
+    }
+
     override suspend fun getTasks(): List<Task> {
         return dbQuery {
             Tasks.selectAll().mapNotNull { it.rowToTask() }.sortedBy { it.id }

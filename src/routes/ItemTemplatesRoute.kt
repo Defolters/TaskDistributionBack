@@ -56,11 +56,11 @@ fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
                 call.respond(HttpStatusCode.BadRequest, "Problems getting ItemTemplates")
             }
         }
-        get<ItemTemplatesIdRoute> { itemTemplatesIdRoute ->
+        get<ItemTemplatesIdRoute> { idRoute ->
             call.getActiveUser(db) ?: return@get
 
             try {
-                db.findItemTemplate(itemTemplatesIdRoute.id)?.let { itemTemplate ->
+                db.findItemTemplate(idRoute.id)?.let { itemTemplate ->
                     call.respond(itemTemplate)
                 }
             } catch (e: Throwable) {

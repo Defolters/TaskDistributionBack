@@ -7,4 +7,5 @@ interface ItemRepository : RepositoryInterface {
     suspend fun deleteItem(id: Int)
     suspend fun getItems(): List<Item>
     suspend fun getItems(orderId: Int): List<Item>
+    suspend fun findItem(id: Int?): Item?
 }

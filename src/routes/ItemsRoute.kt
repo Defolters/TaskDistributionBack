@@ -23,6 +23,10 @@ const val ITEMS = "$API_VERSION/items"
 class ItemsRoute
 
 @KtorExperimentalLocationsAPI
+@Location("$ITEMS/{id}")
+data class ItemsIdRoute(val id: Int)
+
+@KtorExperimentalLocationsAPI
 fun Route.itemsRoute(db: ItemRepository) {
     authenticate("jwt") {
         get<ItemsRoute> {
@@ -38,6 +42,18 @@ fun Route.itemsRoute(db: ItemRepository) {
                     db.getItems()
                 }
                 call.respond(items)
+            } catch (e: Throwable) {
+                application.log.error("Failed to get Item", e)
+                call.respond(HttpStatusCode.BadRequest, "Problems getting Item")
+            }
+        }
+        get<ItemsIdRoute> { idRoute ->
+            call.getActiveUser(db) ?: return@get
+
+            try {
+                db.findItem(idRoute.id)?.let { item ->
+                    call.respond(item)
+                }
             } catch (e: Throwable) {
                 application.log.error("Failed to get Item", e)
                 call.respond(HttpStatusCode.BadRequest, "Problems getting Item")

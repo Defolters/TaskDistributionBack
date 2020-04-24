@@ -54,11 +54,11 @@ fun Route.workerTypesRoute(db: WorkerTypeRepository) {
                 call.respond(HttpStatusCode.BadRequest, "Problems getting WorkerType")
             }
         }
-        get<WorkerTypesIdRoute> { workerTypesIdRoute ->
+        get<WorkerTypesIdRoute> { idRoute ->
             call.getActiveUser(db) ?: return@get
 
             try {
-                db.findWorkerType(workerTypesIdRoute.id)?.let { workerType ->
+                db.findWorkerType(idRoute.id)?.let { workerType ->
                     call.respond(workerType)
                 }
             } catch (e: Throwable) {
