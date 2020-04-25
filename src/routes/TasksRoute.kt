@@ -20,6 +20,10 @@ const val TASKS = "$API_VERSION/tasks"
 class TasksRoute
 
 @KtorExperimentalLocationsAPI
+@Location("$TASKS/{id}")
+data class TasksIdRoute(val id: Int)
+
+@KtorExperimentalLocationsAPI
 fun Route.tasksRoute(db: TaskRepository) {
     authenticate("jwt") {
         get<TasksRoute> {
@@ -35,6 +39,18 @@ fun Route.tasksRoute(db: TaskRepository) {
                     db.getTasks()
                 }
                 call.respond(tasks)
+            } catch (e: Throwable) {
+                application.log.error("Failed to get Task", e)
+                call.respond(HttpStatusCode.BadRequest, "Problems getting Task")
+            }
+        }
+        get<TasksIdRoute> { idRoute ->
+            call.getActiveUser(db) ?: return@get
+
+            try {
+                db.findTask(idRoute.id)?.let { task ->
+                    call.respond(task)
+                }
             } catch (e: Throwable) {
                 application.log.error("Failed to get Task", e)
                 call.respond(HttpStatusCode.BadRequest, "Problems getting Task")

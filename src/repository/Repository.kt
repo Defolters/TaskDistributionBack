@@ -443,6 +443,16 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
         }
     }
 
+    override suspend fun findTask(id: Int?): Task? {
+        if (id == null) return null
+
+        return dbQuery {
+            Tasks.select {
+                Tasks.id.eq(id)
+            }.mapNotNull { it.rowToTask() }.singleOrNull()
+        }
+    }
+
     override suspend fun addWorkerType(title: String): WorkerType? {
         var statement: InsertStatement<Number>? = null
         dbQuery {
