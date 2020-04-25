@@ -1,5 +1,6 @@
 package io.defolters.routes
 
+import com.google.gson.Gson
 import io.defolters.API_VERSION
 import io.defolters.repository.interfaces.TaskTemplateRepository
 import io.ktor.application.application
@@ -31,6 +32,11 @@ data class TaskTemplateJSON(
     val timeToComplete: Int,
     val isAdditional: Boolean?,
     val ids: List<Int>?
+)
+
+data class TaskTemplateFilterJSON(
+    val itemTemplateId: Int?,
+    val isAdditional: Boolean?
 )
 
 @KtorExperimentalLocationsAPI
@@ -70,11 +76,15 @@ fun Route.taskTemplatesRoute(db: TaskTemplateRepository) {
             call.getActiveUser(db) ?: return@get
 
             val taskTemplatesParameters = call.request.queryParameters
-            val itemTemplateId = taskTemplatesParameters["itemTemplateId"]
+            val filter = taskTemplatesParameters["filter"]
+
+            val gson = Gson()
+            val obj = gson.fromJson(filter, TaskTemplateFilterJSON::class.java)
+
 
             try {
-                val taskTemplates = if (itemTemplateId != null) {
-                    db.getTaskTemplates(itemTemplateId.toInt())
+                val taskTemplates = if (obj.itemTemplateId != null && obj.isAdditional != null) {
+                    db.getTaskTemplates(obj.itemTemplateId, obj.isAdditional)
                 } else {
                     db.getTaskTemplates()
                 }

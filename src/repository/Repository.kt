@@ -174,10 +174,11 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
         }
     }
 
-    override suspend fun getTaskTemplates(itemTemplateId: Int): List<TaskTemplate> {
+    override suspend fun getTaskTemplates(itemTemplateId: Int, isAdditional: Boolean): List<TaskTemplate> {
         return dbQuery {
             TaskTemplates.select {
-                TaskTemplates.itemTemplateId.eq((itemTemplateId))
+                TaskTemplates.itemTemplateId.eq((itemTemplateId)) and
+                        TaskTemplates.isAdditional.eq((isAdditional))
             }.mapNotNull { it.rowToTaskTemplate() }
         }
     }
@@ -259,7 +260,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                 val setOfTasks = mutableSetOf<Int>()
 
                 //set dependency to previous task
-                var previousTaskId = 0
+                var previousTaskId: Int? = null
                 //create mandatory tasks
                 var i = 0
                 while (mandatoryTaskTemplates.isNotEmpty()) {
@@ -289,7 +290,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
                 //create additional list
                 val additionalNewList = mutableListOf<TaskTemplate>()
-                val idsList = item.taskTemplatesIds.map { it.id }.toMutableList()
+                val idsList = item.taskTemplatesIds.map { it }.toMutableList() //.id
                 idsList.sortBy { it }
 
                 logger.log(Level.INFO, "size ${idsList.size}")
@@ -364,26 +365,8 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
     override suspend fun deleteOrder(id: Int) {
         dbQuery {
-            // delete order
             Orders.deleteWhere {
                 Orders.id.eq(id)
-            }
-
-            // get items
-            val items = Items.select {
-                Items.orderId.eq((id))
-            }.mapNotNull { it.rowToItemTemplate() }
-
-            // delete tasks
-            items.forEach { item ->
-                Tasks.deleteWhere {
-                    Tasks.itemId.eq(item.id)
-                }
-            }
-
-            // delete items
-            Items.deleteWhere {
-                Items.orderId.eq(id)
             }
         }
     }

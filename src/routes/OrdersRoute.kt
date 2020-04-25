@@ -34,8 +34,12 @@ data class OrderJSON(
     val ids: List<Int>?
 )
 
-data class ItemJSON(val itemTemplateId: Int, val info: String, val price: Double, val taskTemplatesIds: List<TaskJSON>)
-data class TaskJSON(val id: Int)
+data class ItemJSON(
+    val itemTemplateId: Int,
+    val info: String,
+    val price: Double,
+    val taskTemplatesIds: List<Int>
+)
 
 @KtorExperimentalLocationsAPI
 fun Route.ordersRoute(db: OrderRepository) {
