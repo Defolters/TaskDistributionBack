@@ -7,7 +7,7 @@ data class TaskType(val start: IntVar, val end: IntVar, val interval: IntervalVa
 data class AssignedTaskType(val start: Long, val job: Int, val index: Int, val duration: Int)
 
 data class OrderData(val tasks: List<TaskData>)
-data class TaskData(val workerType: Int, val timeToComplete: Int)
+data class TaskData(val task_id: Int, val workerType: Int, val timeToComplete: Int, val priority: Int = 0)
 
 object TaskOptimizer {
 
@@ -15,26 +15,52 @@ object TaskOptimizer {
         val orders = listOf(
             OrderData(
                 listOf(
-                    TaskData(0, 3),
-                    TaskData(1, 2),
-                    TaskData(2, 2)
+                    TaskData(0, 0, 3),
+                    TaskData(1, 1, 2),
+                    TaskData(2, 2, 2)
                 )
             ),
             OrderData(
                 listOf(
-                    TaskData(0, 2),
-                    TaskData(2, 1),
-                    TaskData(1, 4)
+                    TaskData(0, 0, 2),
+                    TaskData(1, 2, 1),
+                    TaskData(2, 1, 4)
                 )
             ),
             OrderData(
                 listOf(
-                    TaskData(1, 4),
-                    TaskData(2, 3)
+                    TaskData(0, 1, 4),
+                    TaskData(1, 2, 3)
                 )
             )
         )
         optimize(orders)
+
+        val orders2 = listOf(
+            OrderData(
+                listOf(
+                    TaskData(0, 0, 3, 1),
+                    TaskData(1, 1, 2, 2),
+                    TaskData(2, 2, 2, 2),
+                    TaskData(3, 0, 2, 3),
+                    TaskData(4, 3, 1, 4)
+                )
+            ),
+            OrderData(
+                listOf(
+                    TaskData(0, 0, 2, 1),
+                    TaskData(1, 2, 1, 2),
+                    TaskData(2, 1, 4, 3)
+                )
+            ),
+            OrderData(
+                listOf(
+                    TaskData(0, 1, 4, 1),
+                    TaskData(1, 2, 3, 2)
+                )
+            )
+        )
+        optimizeSecond(orders2)
     }
 
     fun optimize(orders: List<OrderData>) {
@@ -139,6 +165,134 @@ object TaskOptimizer {
             print(output)
         }
     }
+
+    fun optimizeSecond(orders: List<OrderData>) {
+        OrToolsHelper.loadLibrary()
+        // Create the model.
+        val model = CpModel()
+
+        val workerTypesSet = orders.map { it.tasks.map { it.workerType } }.flatten().toSortedSet()
+
+        // Computes horizon dynamically as the sum of all durations.
+        val horizon = orders.sumBy { it.tasks.sumBy { it.timeToComplete } }.toLong()
+
+        // Creates job intervals and add to the corresponding machine lists.
+        val allTasks = mutableMapOf<Pair<Int, Int>, TaskType>()
+        val workerTypeToIntervals = mutableMapOf<Int, MutableList<IntervalVar>>()
+
+        orders.forEachIndexed { order_id, order ->
+            order.tasks.forEach { task ->
+                val task_id = task.task_id
+                println(" task id $task_id")
+                val machine = task.workerType
+                val duration = task.timeToComplete.toLong()
+                val suffix = "_${order_id}_$task_id"
+                val startVar = model.newIntVar(0, horizon, "start" + suffix)
+                val endVar = model.newIntVar(0, horizon, "end" + suffix)
+                val intervalVar = model.newIntervalVar(startVar, duration, endVar, "interval" + suffix)
+
+                allTasks[Pair(order_id, task_id)] = TaskType(start = startVar, end = endVar, interval = intervalVar)
+                if (workerTypeToIntervals[machine] == null) workerTypeToIntervals[machine] = mutableListOf()
+                workerTypeToIntervals[machine]!!.add(intervalVar)
+            }
+        }
+        // Create and add disjunctive constraints.
+        workerTypesSet.forEach { machine ->
+            model.addNoOverlap(workerTypeToIntervals[machine]!!.toTypedArray())
+        }
+        // Tasks in one order should not overlap
+        orders.forEachIndexed { order_id, order ->
+            val intervals = mutableListOf<IntervalVar>()
+            order.tasks.forEach { task ->
+                intervals.add(
+                    allTasks[Pair(order_id, task.task_id)]!!.interval
+                )
+            }
+            model.addNoOverlap(intervals.toTypedArray())
+        }
+        // Precedences inside a order.
+        orders.forEachIndexed { order_id, order ->
+            val tasksByPriority = order.tasks.groupBy { it.priority }.toSortedMap()
+            var lastEnd: List<TaskData>? = null
+
+            tasksByPriority.forEach { (_, value) ->
+
+                if (lastEnd != null) {
+                    value.forEach { task ->
+                        lastEnd!!.forEach { lastTask ->
+                            model.addGreaterOrEqual(
+                                allTasks[Pair(order_id, task.task_id)]!!.start,
+                                allTasks[Pair(order_id, lastTask.task_id)]!!.end
+                            )
+                        }
+                    }
+                }
+                lastEnd = value
+            }
+        }
+
+        // Makespan objective.
+        val objVar = model.newIntVar(0, horizon, "makespan")
+        model.addMaxEquality(
+            objVar,
+            orders.mapIndexed { order_id, order ->
+                allTasks[Pair(order_id, order.tasks.size - 1)]?.end
+            }.toTypedArray()
+        )
+        model.minimize(objVar)
+
+        // Solve model.
+        val solver = CpSolver()
+        val status = solver.solve(model)
+
+        print(status)
+        if (status == CpSolverStatus.OPTIMAL) {
+            //Create one list of assigned tasks per machine.
+            val assignedTasks = mutableMapOf<Int, MutableList<AssignedTaskType>>()
+            orders.forEachIndexed { order_id, order ->
+                order.tasks.forEach { task ->
+                    val task_id = task.task_id
+                    val machine = task.workerType
+                    if (assignedTasks[machine] == null) assignedTasks[machine] = mutableListOf()
+                    assignedTasks[machine]?.add(
+                        AssignedTaskType(
+                            start = solver.value(allTasks[Pair(order_id, task_id)]?.start),
+                            job = order_id, index = task_id, duration = task.timeToComplete
+                        )
+                    )
+                }
+            }
+            // Create per machine output lines.
+            var output = ""
+            workerTypesSet.forEach { machine ->
+                // Sort by starting time.
+                assignedTasks[machine]?.sortBy { it.start }
+                var solLineTasks = "Machine $machine: "
+                var solLine = ""
+
+                assignedTasks[machine]?.forEach { assigned_task ->
+                    val name = " order_${assigned_task.job}_${assigned_task.index}"
+                    // Add spaces to output to align columns.
+                    solLineTasks += name
+
+                    val start = assigned_task.start
+                    val duration = assigned_task.duration
+                    val solTmp = "[$start ${start + duration}]"
+                    solLine += solTmp
+                }
+
+                solLine += "\n"
+                solLineTasks += "\n"
+                output += solLineTasks
+                output += solLine
+            }
+
+            // Finally print the solution found.
+            print("Optimal Schedule Length: ${solver.objectiveValue()}\n")
+            print(output)
+        }
+    }
+
 
     fun minimalJobshopSat() {
         OrToolsHelper.loadLibrary()
