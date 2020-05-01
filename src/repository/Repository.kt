@@ -7,6 +7,9 @@ import io.defolters.optimization.TaskOptimizer
 import io.defolters.repository.interfaces.*
 import io.defolters.repository.tables.*
 import io.defolters.routes.OrderJSON
+import io.defolters.routes.ScheduleData
+import io.defolters.routes.ScheduleTaskData
+import io.defolters.routes.WorkerTypeData
 import models.Todo
 import models.User
 import org.jetbrains.exposed.sql.*
@@ -21,43 +24,46 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
     override suspend fun optimize() {
         dbQuery {
             val itemsData = mutableListOf<ItemData>()
-            val orders = Orders.select {
-                Orders.isReady eq false
-            }.mapNotNull { it.rowToOrder() }
+            val items = Items.select {
+                Items.isReady eq false
+            }.mapNotNull { it.rowToItem() }
 
-            orders.forEach { order ->
-                val items = Items.select {
-                    Items.orderId eq order.id
-                    Items.isReady eq false
-                }.mapNotNull { it.rowToItem() }
+            items.forEach { item ->
+                val tasksData = mutableListOf<TaskData>()
 
-                items.forEach { item ->
-                    val tasksData = mutableListOf<TaskData>()
+                val tasks = Tasks.select {
+                    Tasks.itemId eq item.id and (Tasks.status neq TaskStatus.DONE)
+                }.mapNotNull { it.rowToTask() }
 
-                    val tasks = Tasks.select {
-                        Tasks.itemId eq item.id
-                        Tasks.status neq TaskStatus.DONE
-                    }.mapNotNull { it.rowToTask() }
-
-                    tasks.forEach { task ->
-                        tasksData.add(
-                            TaskData(
-                                task_id = task.id,
-                                workerType = task.workerTypeId,
-                                timeToComplete = task.timeToComplete,
-                                taskDependency = task.taskDependencyId,
-                                isAdditional = task.isAdditional
-                            )
+                tasks.forEach { task ->
+                    tasksData.add(
+                        TaskData(
+                            task_id = task.id,
+                            workerType = task.workerTypeId,
+                            timeToComplete = task.timeToComplete,
+                            taskDependency = task.taskDependencyId,
+                            isAdditional = task.isAdditional,
+                            title = task.title
                         )
-                    }
+                    )
+                }
 
-                    itemsData.add(ItemData(tasksData))
+                itemsData.add(ItemData(tasksData))
+            }
+
+            // OPTIMIZE
+            val tasks = TaskOptimizer.optimizeThird(itemsData)
+
+            ScheduleTasks.deleteAll()
+            tasks.forEach { taskData ->
+                ScheduleTasks.insert {
+                    it[ScheduleTasks.workerTypeId] = taskData.resourceId
+                    it[ScheduleTasks.title] = taskData.title
+                    it[ScheduleTasks.start] = taskData.start
+                    it[ScheduleTasks.end] = taskData.end
                 }
             }
-            TaskOptimizer.optimizeThird(itemsData)
         }
-
-        //save to db
     }
 
     override suspend fun addUser(email: String, displayName: String, passwordHash: String): User? {
@@ -304,22 +310,20 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                 val logger = Logger.getLogger("APP")
 
                 // create tasks for each item
-                val setOfTasks = mutableSetOf<Int>()
+                val map = mutableMapOf<Int, Int>()
 
-                //set dependency to previous task
-                var previousTaskId: Int? = null
                 //create mandatory tasks
                 var i = 0
                 while (mandatoryTaskTemplates.isNotEmpty()) {
                     val taskTemplate = mandatoryTaskTemplates[i % mandatoryTaskTemplates.size]
                     logger.log(Level.INFO, "task: $taskTemplate")
                     if ((taskTemplate.taskTemplateDependencyId == null) ||
-                        (taskTemplate.taskTemplateDependencyId in setOfTasks)
+                        (taskTemplate.taskTemplateDependencyId in map)
                     ) {
                         // create task
                         val taskInsertStatement = Tasks.insert {
                             it[Tasks.itemId] = newItem.id
-                            it[Tasks.taskDependencyId] = previousTaskId
+                            it[Tasks.taskDependencyId] = map[taskTemplate.taskTemplateDependencyId]
                             it[Tasks.workerTypeId] = taskTemplate.workerTypeId
                             it[Tasks.title] = taskTemplate.title
                             it[Tasks.timeToComplete] = taskTemplate.timeToComplete
@@ -327,10 +331,9 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                             it[Tasks.status] = TaskStatus.NEW
                         }
                         val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
-                        previousTaskId = newTask.id
 
                         logger.log(Level.INFO, "task $newTask")
-                        setOfTasks.add(taskTemplate.id)
+                        map[taskTemplate.id] = newTask.id
                         mandatoryTaskTemplates.removeAt(i % mandatoryTaskTemplates.size)
                     }
                     i++
@@ -338,23 +341,28 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
                 //create additional list
                 val additionalNewList = mutableListOf<TaskTemplate>()
-                val idsList = item.taskTemplatesIds.map { it }.toMutableList() //.id
+                val idsList = item.taskTemplatesIds?.map { it }?.toMutableList() ?: mutableListOf() //.id
                 idsList.sortBy { it }
 
                 logger.log(Level.INFO, "size ${idsList.size}")
-                for (j in 0 until idsList.size) {
+                i = 0
+                while (idsList.isNotEmpty()) {
+                    val taskId = idsList[i % idsList.size]
+
                     // we should accept only existing tasks
-                    val taskTemplate = additionalTaskTemplates.find { it.id == idsList[j] }
+                    val taskTemplate = additionalTaskTemplates.find { it.id == taskId }
                         ?: throw Exception()
 
                     taskTemplate.taskTemplateDependencyId?.let { id ->
-                        if (id !in setOfTasks) { // if wew didn't it yet
+                        if ((id !in map) && (id !in idsList)) {
                             idsList.add(id)
                         }
                     }
 
                     //add to task's list
                     additionalNewList.add(taskTemplate)
+                    idsList.removeAt(i % idsList.size)
+                    i++
                 }
 
                 //create additional task
@@ -364,12 +372,12 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                     logger.log(Level.INFO, "task: $taskTemplate")
 
                     if ((taskTemplate.taskTemplateDependencyId == null) ||
-                        (taskTemplate.taskTemplateDependencyId in setOfTasks)
+                        (taskTemplate.taskTemplateDependencyId in map)
                     ) {
                         // create task
                         val taskInsertStatement = Tasks.insert {
                             it[Tasks.itemId] = newItem.id
-                            it[Tasks.taskDependencyId] = previousTaskId
+                            it[Tasks.taskDependencyId] = map[taskTemplate.taskTemplateDependencyId]
                             it[Tasks.title] = taskTemplate.title
                             it[Tasks.workerTypeId] = taskTemplate.workerTypeId
                             it[Tasks.timeToComplete] = taskTemplate.timeToComplete
@@ -377,16 +385,15 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                             it[Tasks.status] = TaskStatus.NEW
                         }
                         val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
-                        previousTaskId = newTask.id
 
                         logger.log(Level.INFO, "task $newTask")
-                        setOfTasks.add(taskTemplate.id)
+                        map[taskTemplate.id] = newTask.id
                         additionalNewList.removeAt(i % additionalNewList.size)
                     }
                     i++
                 }
 
-                logger.log(Level.INFO, "set size ${setOfTasks.size}")
+                logger.log(Level.INFO, "map size ${map.size}")
 
             }
 
@@ -547,8 +554,19 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
         }
     }
 
-    override suspend fun getSchedule() {
-        TODO("Not yet implemented")
+    override suspend fun getSchedule(): ScheduleData? {
+        return dbQuery {
+            val workerTypesData = mutableListOf<WorkerTypeData>()
+
+            val workerTypes = WorkerTypes.selectAll().mapNotNull { it.rowToWorkerType() }.sortedBy { it.id }
+            workerTypes.forEach { workerType ->
+                workerTypesData.add(WorkerTypeData(workerType.id, workerType.title))
+            }
+
+            val tasks = ScheduleTasks.selectAll().mapNotNull { it.rowToScheduleTask() }
+
+            ScheduleData(workerTypesData, tasks)
+        }
     }
 }
 
@@ -613,5 +631,13 @@ fun ResultRow.rowToTask() = Task(
 fun ResultRow.rowToWorkerType() = WorkerType(
     id = this[WorkerTypes.id],
     title = this[WorkerTypes.title]
+)
+
+fun ResultRow.rowToScheduleTask() = ScheduleTaskData(
+    id = this[ScheduleTasks.id],
+    resourceId = this[ScheduleTasks.workerTypeId],
+    start = this[ScheduleTasks.start],
+    end = this[ScheduleTasks.end],
+    title = this[ScheduleTasks.title]
 )
 

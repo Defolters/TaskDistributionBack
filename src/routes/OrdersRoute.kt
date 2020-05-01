@@ -40,7 +40,7 @@ data class ItemJSON(
     val itemTemplateId: Int,
     val info: String,
     val price: Double,
-    val taskTemplatesIds: List<Int>
+    val taskTemplatesIds: List<Int>?
 )
 
 @KtorExperimentalLocationsAPI
@@ -66,7 +66,10 @@ fun Route.ordersRoute(db: OrderRepository) {
                 val time = measureTimeMillis {
                     db.addOrder(orderJSON, todayAsString)?.let { order ->
                         call.respond(order)
-                        db.optimize()
+                        val timeOptimization = measureTimeMillis {
+                            db.optimize()
+                        }
+                        logger.log(Level.INFO, "time to optimize tasks: $timeOptimization")
                     }
                 }
                 logger.log(Level.INFO, "time to create order: $time")

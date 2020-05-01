@@ -94,6 +94,7 @@ fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
             try {
                 db.updateItemTemplate(jsonData.id, jsonData.title)?.let {
                     call.respond(it)
+                    db.optimize()
                 }
             } catch (e: Throwable) {
                 application.log.error("Failed to update ItemTemplate", e)

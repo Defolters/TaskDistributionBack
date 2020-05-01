@@ -2,9 +2,13 @@ package io.defolters.optimization
 
 import com.google.ortools.sat.*
 import com.skaggsm.ortools.OrToolsHelper
+import io.defolters.routes.ScheduleTaskData
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.*
 
 data class TaskType(val start: IntVar, val end: IntVar, val interval: IntervalVar)
-data class AssignedTaskType(val start: Long, val job: Int, val index: Int, val duration: Int)
+data class AssignedTaskType(val start: Long, val job: Int, val index: Int, val duration: Int, val title: String)
 
 data class ItemData(val tasks: List<TaskData>)
 data class TaskData(
@@ -13,7 +17,8 @@ data class TaskData(
     val timeToComplete: Int,
     val priority: Int = 0,
     val taskDependency: Int? = null,
-    val isAdditional: Boolean = false
+    val isAdditional: Boolean = false,
+    val title: String = ""
 )
 
 object TaskOptimizer {
@@ -229,7 +234,8 @@ object TaskOptimizer {
                     assignedTasks[machine]?.add(
                         AssignedTaskType(
                             start = solver.value(allTasks[Pair(order_id, task_id)]?.start),
-                            job = order_id, index = task_id, duration = task.timeToComplete
+                            job = order_id, index = task_id, duration = task.timeToComplete,
+                            title = task.title
                         )
                     )
                 }
@@ -356,7 +362,8 @@ object TaskOptimizer {
                     assignedTasks[machine]?.add(
                         AssignedTaskType(
                             start = solver.value(allTasks[Pair(order_id, task_id)]?.start),
-                            job = order_id, index = task_id, duration = task.timeToComplete
+                            job = order_id, index = task_id, duration = task.timeToComplete,
+                            title = task.title
                         )
                     )
                 }
@@ -392,7 +399,7 @@ object TaskOptimizer {
         }
     }
 
-    fun optimizeThird(items: List<ItemData>) {
+    fun optimizeThird(items: List<ItemData>): List<ScheduleTaskData> {
         OrToolsHelper.loadLibrary()
         // Create the model.
         val model = CpModel()
@@ -479,9 +486,7 @@ object TaskOptimizer {
         val objVar = model.newIntVar(0, horizon, "makespan")
         model.addMaxEquality(
             objVar,
-            items.mapIndexed { order_id, order ->
-                allTasks[Pair(order_id, order.tasks.size - 1)]?.end
-            }.toTypedArray()
+            allTasks.values.map { it.end }.toTypedArray()
         )
         model.minimize(objVar)
 
@@ -501,12 +506,17 @@ object TaskOptimizer {
                     assignedTasks[machine]?.add(
                         AssignedTaskType(
                             start = solver.value(allTasks[Pair(order_id, task_id)]?.start),
-                            job = order_id, index = task_id, duration = task.timeToComplete
+                            job = order_id, index = task_id, duration = task.timeToComplete,
+                            title = task.title
                         )
                     )
                 }
             }
             // Create per machine output lines.
+            val tasks = mutableListOf<ScheduleTaskData>()
+            val pattern = "yyyy-MM-dd HH:mm:ss"
+            val df: DateFormat = SimpleDateFormat(pattern)
+
             var output = ""
             workerTypesSet.forEach { machine ->
                 // Sort by starting time.
@@ -523,6 +533,30 @@ object TaskOptimizer {
                     val duration = assigned_task.duration
                     val solTmp = "[$start ${start + duration}]"
                     solLine += solTmp
+
+                    // current day + hour + hours from duration
+                    val today = Calendar.getInstance().time
+                    val newCal = Calendar.getInstance()
+//                    newCal.time = today
+                    newCal.add(Calendar.HOUR, 1 + start.toInt())
+                    val startString = df.format(newCal.time)
+                    newCal.add(Calendar.HOUR, duration)
+                    val endString = df.format(newCal.time)
+                    println("today ${df.format(today)}")
+                    println("duration ${duration}")
+                    println("start ${start}")
+                    println("start $startString")
+                    println("end $endString")
+
+                    tasks.add(
+                        ScheduleTaskData(
+                            id = assigned_task.index,
+                            resourceId = machine,
+                            start = startString,
+                            end = endString,
+                            title = assigned_task.title
+                        )
+                    )
                 }
 
                 solLine += "\n"
@@ -534,7 +568,10 @@ object TaskOptimizer {
             // Finally print the solution found.
             print("Optimal Schedule Length: ${solver.objectiveValue()}\n")
             print(output)
+
+            return tasks
         }
+        return emptyList()
     }
 
     fun minimalJobshopSat() {
@@ -611,7 +648,8 @@ object TaskOptimizer {
                     assigned_jobs[machine]?.add(
                         AssignedTaskType(
                             start = solver.value(all_tasks[Pair(job_id, task_id)]?.start),
-                            job = job_id, index = task_id, duration = task.second
+                            job = job_id, index = task_id, duration = task.second,
+                            title = ""
                         )
                     )
                 }

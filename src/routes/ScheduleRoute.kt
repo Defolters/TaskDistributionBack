@@ -20,7 +20,7 @@ const val SCHEDULE = "$API_VERSION/schedule"
 class ScheduleRoute
 
 data class WorkerTypeData(val id: Int, val name: String)
-data class TaskData(
+data class ScheduleTaskData(
     val id: Int,
     val resourceId: Int,
     val start: String,
@@ -31,7 +31,7 @@ data class TaskData(
     val bgColor: String = "red"
 )
 
-data class ScheduleData(val workerTypes: List<WorkerTypeData>, val tasks: List<TaskData>)
+data class ScheduleData(val workerTypes: List<WorkerTypeData>, val tasks: List<ScheduleTaskData>)
 
 @KtorExperimentalLocationsAPI
 fun Route.scheduleRoute(db: ScheduleRepository) {
@@ -39,32 +39,13 @@ fun Route.scheduleRoute(db: ScheduleRepository) {
         get<ScheduleRoute> {
             call.getActiveUser(db) ?: return@get
 
-            val data = ScheduleData(
-                listOf(
-                    WorkerTypeData(1, "Type1"),
-                    WorkerTypeData(2, "Type2")
-                ),
-                listOf(
-                    TaskData(
-                        id = 1,
-                        resourceId = 1,
-                        start = "2017-12-19 15:50:00",
-                        end = "2017-12-19 23:30:00",
-                        title = "First task"
-                    ),
-                    TaskData(
-                        id = 2,
-                        resourceId = 2,
-                        start = "2017-12-19 15:50:00",
-                        end = "2017-12-20 23:30:00",
-                        title = "Second task"
-                    )
-                )
-            )
-
             try {
-                //val schedule = db.getSchedule()
-                call.respond(data)
+                val schedule = db.getSchedule()
+                if (schedule != null) {
+                    call.respond(schedule)
+                } else {
+                    throw Exception("empty")
+                }
             } catch (e: Throwable) {
                 application.log.error("Failed to get schedule", e)
                 call.respond(HttpStatusCode.BadRequest, "Problems getting schedule")
