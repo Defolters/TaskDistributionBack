@@ -100,6 +100,7 @@ fun Application.module() {
         itemsRoute(db)
         tasksRoute(db)
         workerTypesRoute(db)
+        scheduleRoute(db)
     }
 }
 
