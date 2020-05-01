@@ -5,5 +5,6 @@ data class Item(
     val orderId: Int,
     val title: String,
     val info: String,
-    val price: Double
+    val price: Double,
+    val isReady: Boolean
 )

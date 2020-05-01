@@ -7,7 +7,8 @@ object Orders : Table() {
     val customerName = varchar("customerName", 512)
     val customerEmail = varchar("customerEmail", 512)
     val price = double("price")
-    val createdAt = long("createdAt")
+    val createdAt = varchar("createdAt", 128)
+    val isReady = bool("isReady")
 
     override val primaryKey = PrimaryKey(id)
 }

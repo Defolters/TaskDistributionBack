@@ -11,6 +11,8 @@ import io.ktor.locations.*
 import io.ktor.request.receive
 import io.ktor.response.respond
 import io.ktor.routing.Route
+import java.text.DateFormat
+import java.text.SimpleDateFormat
 import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -52,11 +54,19 @@ fun Route.ordersRoute(db: OrderRepository) {
             val logger = Logger.getLogger("APP")
             logger.log(Level.INFO, "date: $date")
 
+            val pattern = "yyyy-MM-dd HH:mm:ss"
+            val df: DateFormat = SimpleDateFormat(pattern)
+            val today = Calendar.getInstance().time
+            val todayAsString = df.format(today)
+
+            println("Today is: $todayAsString")
+
             try {
                 val orderJSON = call.receive<OrderJSON>()
                 val time = measureTimeMillis {
-                    db.addOrder(orderJSON, date.time)?.let { order ->
+                    db.addOrder(orderJSON, todayAsString)?.let { order ->
                         call.respond(order)
+                        db.optimize()
                     }
                 }
                 logger.log(Level.INFO, "time to create order: $time")

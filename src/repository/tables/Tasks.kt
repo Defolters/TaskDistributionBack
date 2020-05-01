@@ -11,6 +11,7 @@ object Tasks : Table() {
     val workerTypeId = integer("workerTypeId").references(WorkerTypes.id)
     val title = varchar("title", 512)
     val timeToComplete = integer("timeToComplete")
+    val isAdditional = bool("isAdditional")
     val status = enumerationByName("status", 10, TaskStatus::class)
 
     override val primaryKey = PrimaryKey(id)

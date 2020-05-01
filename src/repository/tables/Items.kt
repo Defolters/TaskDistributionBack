@@ -9,6 +9,7 @@ object Items : Table() {
     val title = varchar("title", 512)
     val info = varchar("info", 512)
     val price = double("price")
+    val isReady = bool("isReady")
 
     override val primaryKey = PrimaryKey(id)
 }

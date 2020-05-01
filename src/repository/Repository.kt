@@ -1,6 +1,9 @@
 package repository
 
 import io.defolters.models.*
+import io.defolters.optimization.ItemData
+import io.defolters.optimization.TaskData
+import io.defolters.optimization.TaskOptimizer
 import io.defolters.repository.interfaces.*
 import io.defolters.repository.tables.*
 import io.defolters.routes.OrderJSON
@@ -13,7 +16,49 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskTemplateRepository, OrderRepository,
-    ItemRepository, TaskRepository, WorkerTypeRepository {
+    ItemRepository, TaskRepository, WorkerTypeRepository, ScheduleRepository {
+
+    override suspend fun optimize() {
+        dbQuery {
+            val itemsData = mutableListOf<ItemData>()
+            val orders = Orders.select {
+                Orders.isReady eq false
+            }.mapNotNull { it.rowToOrder() }
+
+            orders.forEach { order ->
+                val items = Items.select {
+                    Items.orderId eq order.id
+                    Items.isReady eq false
+                }.mapNotNull { it.rowToItem() }
+
+                items.forEach { item ->
+                    val tasksData = mutableListOf<TaskData>()
+
+                    val tasks = Tasks.select {
+                        Tasks.itemId eq item.id
+                        Tasks.status neq TaskStatus.DONE
+                    }.mapNotNull { it.rowToTask() }
+
+                    tasks.forEach { task ->
+                        tasksData.add(
+                            TaskData(
+                                task_id = task.id,
+                                workerType = task.workerTypeId,
+                                timeToComplete = task.timeToComplete,
+                                taskDependency = task.taskDependencyId,
+                                isAdditional = task.isAdditional
+                            )
+                        )
+                    }
+
+                    itemsData.add(ItemData(tasksData))
+                }
+            }
+            TaskOptimizer.optimizeThird(itemsData)
+        }
+
+        //save to db
+    }
 
     override suspend fun addUser(email: String, displayName: String, passwordHash: String): User? {
         var statement: InsertStatement<Number>? = null
@@ -215,7 +260,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
         }
     }
 
-    override suspend fun addOrder(orderJSON: OrderJSON, time: Long): Order? {
+    override suspend fun addOrder(orderJSON: OrderJSON, time: String): Order? {
         var orderInsertStatement: InsertStatement<Number>? = null
         dbQuery {
             val items = orderJSON.items
@@ -227,6 +272,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                 it[Orders.customerEmail] = orderJSON.customerEmail
                 it[Orders.price] = price
                 it[Orders.createdAt] = time
+                it[Orders.isReady] = false
             }
             val order = orderInsertStatement?.resultedValues?.get(0)?.rowToOrder()!!
 
@@ -243,6 +289,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                     it[Items.title] = itemTemplate.title
                     it[Items.info] = item.info
                     it[Items.price] = item.price
+                    it[Items.isReady] = false
                 }
                 val newItem = itemInsertStatement.resultedValues?.get(0)?.rowToItem()!!
 
@@ -276,6 +323,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                             it[Tasks.workerTypeId] = taskTemplate.workerTypeId
                             it[Tasks.title] = taskTemplate.title
                             it[Tasks.timeToComplete] = taskTemplate.timeToComplete
+                            it[Tasks.isAdditional] = taskTemplate.isAdditional
                             it[Tasks.status] = TaskStatus.NEW
                         }
                         val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
@@ -325,6 +373,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                             it[Tasks.title] = taskTemplate.title
                             it[Tasks.workerTypeId] = taskTemplate.workerTypeId
                             it[Tasks.timeToComplete] = taskTemplate.timeToComplete
+                            it[Tasks.isAdditional] = taskTemplate.isAdditional
                             it[Tasks.status] = TaskStatus.NEW
                         }
                         val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
@@ -349,7 +398,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
         customerName: String,
         customerEmail: String,
         price: Double,
-        createdAt: Long
+        createdAt: String
     ): Order? {
         var statement: InsertStatement<Number>? = null
         dbQuery {
@@ -497,6 +546,10 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
             }.mapNotNull { it.rowToWorkerType() }.singleOrNull()
         }
     }
+
+    override suspend fun getSchedule() {
+        TODO("Not yet implemented")
+    }
 }
 
 fun ResultRow.rowToTodo() = Todo(
@@ -533,7 +586,8 @@ fun ResultRow.rowToOrder() = Order(
     customerName = this[Orders.customerName],
     customerEmail = this[Orders.customerEmail],
     price = this[Orders.price],
-    createdAt = this[Orders.createdAt]
+    createdAt = this[Orders.createdAt],
+    isReady = this[Orders.isReady]
 )
 
 fun ResultRow.rowToItem() = Item(
@@ -541,7 +595,8 @@ fun ResultRow.rowToItem() = Item(
     orderId = this[Items.orderId],
     price = this[Items.price],
     title = this[Items.title],
-    info = this[Items.info]
+    info = this[Items.info],
+    isReady = this[Items.isReady]
 )
 
 fun ResultRow.rowToTask() = Task(
@@ -551,6 +606,7 @@ fun ResultRow.rowToTask() = Task(
     workerTypeId = this[Tasks.workerTypeId],
     title = this[Tasks.title],
     timeToComplete = this[Tasks.timeToComplete],
+    isAdditional = this[Tasks.isAdditional],
     status = this[Tasks.status]
 )
 

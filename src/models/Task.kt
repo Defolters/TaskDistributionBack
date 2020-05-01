@@ -5,8 +5,8 @@ data class Task(
     val itemId: Int,
     val taskDependencyId: Int?,
     val workerTypeId: Int,
-//    val workerId: Int,
     val title: String,
     val timeToComplete: Int,
+    val isAdditional: Boolean,
     val status: TaskStatus
 )

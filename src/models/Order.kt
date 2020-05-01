@@ -5,5 +5,6 @@ data class Order(
     val customerName: String,
     val customerEmail: String,
     val price: Double,
-    val createdAt: Long
+    val createdAt: String,
+    val isReady: Boolean
 )

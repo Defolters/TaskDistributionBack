@@ -83,7 +83,7 @@ fun Route.taskTemplatesRoute(db: TaskTemplateRepository) {
 
 
             try {
-                val taskTemplates = if (obj.itemTemplateId != null && obj.isAdditional != null) {
+                val taskTemplates = if (obj?.itemTemplateId != null && obj.isAdditional != null) {
                     db.getTaskTemplates(obj.itemTemplateId, obj.isAdditional)
                 } else {
                     db.getTaskTemplates()

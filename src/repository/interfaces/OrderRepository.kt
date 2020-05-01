@@ -5,12 +5,12 @@ import io.defolters.routes.OrderJSON
 
 interface OrderRepository : RepositoryInterface {
 
-    suspend fun addOrder(orderJSON: OrderJSON, time: Long): Order?
+    suspend fun addOrder(orderJSON: OrderJSON, time: String): Order?
     suspend fun addOrder(
         customerName: String,
         customerEmail: String,
         price: Double,
-        createdAt: Long
+        createdAt: String
     ): Order?
 
     suspend fun deleteOrder(id: Int)

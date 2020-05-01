@@ -1,3 +1,6 @@
 package io.defolters.repository.interfaces
 
-interface RepositoryInterface
+interface RepositoryInterface {
+
+    suspend fun optimize()
+}
