@@ -15,6 +15,7 @@ import models.User
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import repository.DatabaseFactory.dbQuery
+import java.awt.Color
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -43,7 +44,8 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                             timeToComplete = task.timeToComplete,
                             taskDependency = task.taskDependencyId,
                             isAdditional = task.isAdditional,
-                            title = task.title
+                            title = task.title,
+                            color = item.color
                         )
                     )
                 }
@@ -61,6 +63,7 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                     it[ScheduleTasks.title] = taskData.title
                     it[ScheduleTasks.start] = taskData.start
                     it[ScheduleTasks.end] = taskData.end
+                    it[ScheduleTasks.color] = taskData.bgColor
                 }
             }
         }
@@ -290,12 +293,14 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
                 }.mapNotNull { it.rowToItemTemplate() }.single()
 
                 //create item
+                val color = generateRandomColor()
                 val itemInsertStatement = Items.insert {
                     it[Items.orderId] = order.id
                     it[Items.title] = itemTemplate.title
                     it[Items.info] = item.info
                     it[Items.price] = item.price
                     it[Items.isReady] = false
+                    it[Items.color] = color
                 }
                 val newItem = itemInsertStatement.resultedValues?.get(0)?.rowToItem()!!
 
@@ -399,24 +404,6 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
 
         }
         return orderInsertStatement?.resultedValues?.get(0)?.rowToOrder()!!
-    }
-
-    override suspend fun addOrder(
-        customerName: String,
-        customerEmail: String,
-        price: Double,
-        createdAt: String
-    ): Order? {
-        var statement: InsertStatement<Number>? = null
-        dbQuery {
-            statement = Orders.insert {
-                it[Orders.customerName] = customerName
-                it[Orders.customerEmail] = customerEmail
-                it[Orders.price] = price
-                it[Orders.createdAt] = createdAt
-            }
-        }
-        return statement?.resultedValues?.get(0)?.rowToOrder()
     }
 
     override suspend fun deleteOrder(id: Int) {
@@ -614,7 +601,8 @@ fun ResultRow.rowToItem() = Item(
     price = this[Items.price],
     title = this[Items.title],
     info = this[Items.info],
-    isReady = this[Items.isReady]
+    isReady = this[Items.isReady],
+    color = this[Items.color]
 )
 
 fun ResultRow.rowToTask() = Task(
@@ -638,6 +626,23 @@ fun ResultRow.rowToScheduleTask() = ScheduleTaskData(
     resourceId = this[ScheduleTasks.workerTypeId],
     start = this[ScheduleTasks.start],
     end = this[ScheduleTasks.end],
-    title = this[ScheduleTasks.title]
+    title = this[ScheduleTasks.title],
+    bgColor = this[ScheduleTasks.color]
 )
+
+fun generateRandomColor(mix: Color? = null): String {
+    var red: Int = kotlin.random.Random.nextInt(250)
+    var green: Int = kotlin.random.Random.nextInt(250)
+    var blue: Int = kotlin.random.Random.nextInt(250)
+
+    // mix the color
+    if (mix != null) {
+        red = (red + mix.red) / 2
+        green = (green + mix.green) / 2
+        blue = (blue + mix.blue) / 2
+    }
+    val hex = java.lang.String.format("#%02x%02x%02x", red, green, blue)
+    print("color ${hex}")
+    return hex
+}
 
