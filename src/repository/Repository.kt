@@ -10,7 +10,6 @@ import io.defolters.routes.OrderJSON
 import io.defolters.routes.ScheduleData
 import io.defolters.routes.ScheduleTaskData
 import io.defolters.routes.WorkerTypeData
-import models.Todo
 import models.User
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.InsertStatement
@@ -19,7 +18,7 @@ import java.awt.Color
 import java.util.logging.Level
 import java.util.logging.Logger
 
-class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskTemplateRepository, OrderRepository,
+class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepository, OrderRepository,
     ItemRepository, TaskRepository, WorkerTypeRepository, ScheduleRepository {
 
     override suspend fun optimize() {
@@ -97,52 +96,6 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
     override suspend fun findUserByEmail(email: String) = dbQuery {
         Users.select { Users.email.eq(email) }
             .map { it.rowToUser() }.singleOrNull()
-    }
-
-    override suspend fun addTodo(userId: Int, todo: String, done: Boolean): Todo? {
-        var statement: InsertStatement<Number>? = null
-        dbQuery {
-            statement = Todos.insert {
-                it[Todos.userId] = userId
-                it[Todos.todo] = todo
-                it[Todos.done] = done
-            }
-        }
-        return statement?.resultedValues?.get(0)?.rowToTodo()
-    }
-
-    override suspend fun getTodos(userId: Int): List<Todo> {
-        return dbQuery {
-            Todos.select {
-                Todos.userId.eq((userId))
-            }.mapNotNull { it.rowToTodo() }
-        }
-    }
-
-    override suspend fun getTodos(userId: Int, offset: Int, limit: Int): List<Todo> {
-        return dbQuery {
-            Todos.select {
-                Todos.userId.eq((userId))
-            }.limit(limit, offset = offset.toLong()).mapNotNull { it.rowToTodo() }
-        }
-    }
-
-    override suspend fun deleteTodo(userId: Int, todoId: Int) {
-        dbQuery {
-            Todos.deleteWhere {
-                Todos.id.eq(todoId)
-                Todos.userId.eq(userId)
-            }
-        }
-    }
-
-    override suspend fun findTodo(userId: Int, todoId: Int): Todo? {
-        return dbQuery {
-            Todos.select {
-                Todos.id.eq(todoId)
-                Todos.userId.eq((userId))
-            }.map { it.rowToTodo() }.singleOrNull()
-        }
     }
 
     override suspend fun addItemTemplate(title: String): ItemTemplate? {
@@ -556,13 +509,6 @@ class Repository : UserRepository, TodoRepository, ItemTemplateRepository, TaskT
         }
     }
 }
-
-fun ResultRow.rowToTodo() = Todo(
-    id = this[Todos.id],
-    userId = this[Todos.userId],
-    todo = this[Todos.todo],
-    done = this[Todos.done]
-)
 
 fun ResultRow.rowToUser() = User(
     userId = this[Users.userId],

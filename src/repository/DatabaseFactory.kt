@@ -16,7 +16,6 @@ object DatabaseFactory {
 
         transaction {
             SchemaUtils.create(Users)
-            SchemaUtils.create(Todos)
             SchemaUtils.create(ItemTemplates)
             SchemaUtils.create(TaskTemplates)
             SchemaUtils.create(Orders)

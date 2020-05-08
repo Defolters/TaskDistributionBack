@@ -21,7 +21,6 @@ import io.ktor.sessions.cookie
 import io.ktor.util.KtorExperimentalAPI
 import repository.DatabaseFactory
 import repository.Repository
-import routes.todosRoute
 import routes.usersRoute
 import kotlin.collections.set
 
@@ -93,7 +92,6 @@ fun Application.module() {
 
     routing {
         usersRoute(db, jwtService, hashFunction)
-        todosRoute(db)
         itemTemplatesRoute(db)
         taskTemplatesRoute(db)
         ordersRoute(db)
