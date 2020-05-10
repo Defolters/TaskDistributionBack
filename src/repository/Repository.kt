@@ -39,6 +39,7 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
                     tasksData.add(
                         TaskData(
                             task_id = task.id,
+                            item_id = task.itemId,
                             workerType = task.workerTypeId,
                             timeToComplete = task.timeToComplete,
                             taskDependency = task.taskDependencyId,
@@ -53,7 +54,8 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
             }
 
             // OPTIMIZE
-            val tasks = TaskOptimizer.optimizeThird(itemsData)
+            // TODO: BEFORE CALLING WE SHOULD CHANGE TIME OF TASKS IN WORK
+            val tasks = TaskOptimizer.optimizeFourth(itemsData)
 
             ScheduleTasks.deleteAll()
             tasks.forEach { taskData ->
@@ -295,6 +297,7 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
                             it[Tasks.timeToComplete] = taskTemplate.timeToComplete
                             it[Tasks.isAdditional] = taskTemplate.isAdditional
                             it[Tasks.status] = TaskStatus.NEW
+                            it[Tasks.lastStatusUpdate] = time
                         }
                         val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
 
@@ -349,6 +352,7 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
                             it[Tasks.timeToComplete] = taskTemplate.timeToComplete
                             it[Tasks.isAdditional] = taskTemplate.isAdditional
                             it[Tasks.status] = TaskStatus.NEW
+                            it[Tasks.lastStatusUpdate] = time
                         }
                         val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
 
@@ -569,7 +573,8 @@ fun ResultRow.rowToTask() = Task(
     title = this[Tasks.title],
     timeToComplete = this[Tasks.timeToComplete],
     isAdditional = this[Tasks.isAdditional],
-    status = this[Tasks.status]
+    status = this[Tasks.status],
+    lastStatusUpdate = this[Tasks.lastStatusUpdate]
 )
 
 fun ResultRow.rowToWorkerType() = WorkerType(

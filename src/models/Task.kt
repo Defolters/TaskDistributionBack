@@ -8,5 +8,6 @@ data class Task(
     val title: String,
     val timeToComplete: Int,
     val isAdditional: Boolean,
-    val status: TaskStatus
+    val status: TaskStatus,
+    val lastStatusUpdate: String
 )

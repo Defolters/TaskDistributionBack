@@ -13,6 +13,7 @@ object Tasks : Table() {
     val timeToComplete = integer("timeToComplete")
     val isAdditional = bool("isAdditional")
     val status = enumerationByName("status", 10, TaskStatus::class)
+    val lastStatusUpdate = varchar("start", 512)
 
     override val primaryKey = PrimaryKey(id)
 }
