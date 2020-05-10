@@ -26,8 +26,6 @@ data class ScheduleTaskData(
     val start: String,
     val end: String,
     val title: String,
-    val movable: Boolean = false,
-    val resizable: Boolean = false,
     val bgColor: String = "red"
 )
 

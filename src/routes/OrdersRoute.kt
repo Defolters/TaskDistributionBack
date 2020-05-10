@@ -115,6 +115,7 @@ fun Route.ordersRoute(db: OrderRepository) {
                     db.deleteOrder(id)
                 }
                 call.respond(HttpStatusCode.OK)
+                db.optimize()
             } catch (e: Throwable) {
                 application.log.error("Failed to delete Order", e)
                 call.respond(HttpStatusCode.BadRequest, "Problems Deleting Order")

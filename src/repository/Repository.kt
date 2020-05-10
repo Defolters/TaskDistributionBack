@@ -68,13 +68,21 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
         }
     }
 
-    override suspend fun addUser(email: String, displayName: String, passwordHash: String): User? {
+    override suspend fun addUser(
+        email: String,
+        displayName: String,
+        passwordHash: String,
+        userType: UserType,
+        workerTypeId: Int?
+    ): User? {
         var statement: InsertStatement<Number>? = null
         dbQuery {
             statement = Users.insert {
                 it[Users.email] = email
                 it[Users.displayName] = displayName
                 it[Users.passwordHash] = passwordHash
+                it[Users.userType] = userType
+                it[Users.workerTypeId] = workerTypeId
             }
         }
         return statement?.resultedValues?.get(0)?.rowToUser()
@@ -514,7 +522,9 @@ fun ResultRow.rowToUser() = User(
     userId = this[Users.userId],
     email = this[Users.email],
     displayName = this[Users.displayName],
-    passwordHash = this[Users.passwordHash]
+    passwordHash = this[Users.passwordHash],
+    userType = this[Users.userType],
+    workerTypeId = this[Users.workerTypeId]
 )
 
 fun ResultRow.rowToItemTemplate() = ItemTemplate(

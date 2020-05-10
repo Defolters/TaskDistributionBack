@@ -302,7 +302,7 @@ object TaskOptimizer {
                             resourceId = machine,
                             start = startString,
                             end = endString,
-                            title = assigned_task.title,
+                            title = "${assigned_task.title} ${duration}h",
                             bgColor = assigned_task.color
                         )
                     )
