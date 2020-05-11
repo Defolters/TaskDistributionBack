@@ -4,9 +4,11 @@ import com.google.ortools.sat.*
 import com.skaggsm.ortools.OrToolsHelper
 import io.defolters.models.TaskStatus
 import io.defolters.routes.ScheduleTaskData
+import org.joda.time.DateTime
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
+
 
 data class TaskType(val start: IntVar, val end: IntVar, val interval: IntervalVar)
 data class AssignedTaskType(
@@ -124,7 +126,7 @@ object TaskOptimizer {
                 )
             )
         )
-        optimizeThird(orders3)
+//        optimizeFourth(orders3)
     }
 
     fun optimizeThird(items: List<ItemData>): List<ScheduleTaskData> {
@@ -432,6 +434,7 @@ object TaskOptimizer {
             val tasks = mutableListOf<ScheduleTaskData>()
             val pattern = "yyyy-MM-dd HH:mm:ss"
             val df: DateFormat = SimpleDateFormat(pattern)
+            val today = getNextWorkingDate(Calendar.getInstance().time) // start working date
 
             var output = ""
             workerTypesSet.forEach { machine ->
@@ -441,7 +444,7 @@ object TaskOptimizer {
                 var solLine = ""
 
                 assignedTasks[machine]?.forEach { assigned_task ->
-                    val name = " order_${assigned_task.job}_${assigned_task.index}"
+                    val name = " item_${assigned_task.job}_${assigned_task.index}"
                     // Add spaces to output to align columns.
                     solLineTasks += name
 
@@ -451,13 +454,16 @@ object TaskOptimizer {
                     solLine += solTmp
 
                     // current day + hour + hours from duration
-                    val today = Calendar.getInstance().time
+
                     val newCal = Calendar.getInstance()
 //                    newCal.time = today
-                    newCal.add(Calendar.HOUR, 1 + start.toInt())
-                    val startString = df.format(newCal.time)
-                    newCal.add(Calendar.HOUR, duration)
-                    val endString = df.format(newCal.time)
+//                    newCal.add(Calendar.HOUR, 1 + start.toInt())
+                    val dateStart = addWorkingHourSecond(today, start.toInt())
+                    val dateEnd = addWorkingHourSecond(today, start.toInt() + duration)
+
+                    val startString = df.format(dateStart)
+//                    newCal.add(Calendar.HOUR, duration)
+                    val endString = df.format(dateEnd)
                     println("today ${df.format(today)}")
                     println("duration ${duration}")
                     println("start ${start}")
@@ -490,5 +496,111 @@ object TaskOptimizer {
         }
         return emptyList()
     }
+
+    private fun addWorkingHourSecond(startTime: Date, hourToAdd: Int): Date {
+        if (hourToAdd == 0) return startTime
+
+        var dateTime = DateTime(startTime)
+        var wholeDays = hourToAdd.div(START_WORKING_DAY)
+        var additionalMinutes = (hourToAdd % START_WORKING_DAY) * 60
+
+        while (wholeDays > 0 || additionalMinutes > 0) {
+            if (wholeDays > 0) {
+                dateTime = dateTime.plusDays(1)
+                if (dateTime.dayOfWeek != 6 && dateTime.dayOfWeek != 7) {
+                    wholeDays--
+                }
+            } else if (additionalMinutes > 0) {
+                val leftToday = END_WORKING_DAY * 60 - dateTime.minuteOfDay
+                if (leftToday > 0) {
+                    if (additionalMinutes < leftToday) {
+                        dateTime = dateTime.plusMinutes(additionalMinutes)
+                        additionalMinutes = 0
+                    } else {
+                        additionalMinutes -= leftToday
+                        dateTime = dateTime.plusMinutes(leftToday)
+                    }
+                } else {
+                    wholeDays++
+                    dateTime = dateTime.hourOfDay().setCopy(START_WORKING_DAY)
+                    dateTime = dateTime.minuteOfHour().setCopy(0)
+                    dateTime = dateTime.secondOfMinute().setCopy(0)
+                }
+            }
+        }
+
+        return dateTime.toDate()
+    }
+
+    // working time: MON - FRI, 9-18
+    private fun getNextWorkingDate(startDate: Date): Date {
+        var date = DateTime(startDate)
+        date = date.secondOfMinute().setCopy(0)
+        date = date.millisOfSecond().setCopy(0)
+        val dayOfTheWeek = date.dayOfWeek().get()
+        val dayHour = date.hourOfDay().get()
+
+        if (dayOfTheWeek in listOf(5, 6, 7)) {
+            when (dayOfTheWeek) {
+                5 -> {
+                    when {
+                        dayHour < START_WORKING_DAY -> { // FRI <START_WORKING_DAY
+                            date = date.hourOfDay().setCopy(START_WORKING_DAY)
+                            date = date.minuteOfHour().setCopy(0)
+                            date = date.secondOfMinute().setCopy(0)
+
+                            return date.toDate()
+                        }
+                        dayHour >= END_WORKING_DAY -> { // FRI >= END_WORKING_DAY
+                            date = date.plusDays(3)
+                            date = date.hourOfDay().setCopy(START_WORKING_DAY)
+                            date = date.minuteOfHour().setCopy(0)
+                            date = date.secondOfMinute().setCopy(0)
+
+                            return date.toDate()
+                        }
+                        else -> {
+                            return date.toDate()
+                        }
+                    }
+                }
+                6 -> {
+                    date = date.plusDays(2)
+                    date = date.hourOfDay().setCopy(START_WORKING_DAY)
+                    date = date.minuteOfHour().setCopy(0)
+                    date = date.secondOfMinute().setCopy(0)
+
+                    return date.toDate()
+                }
+                7 -> {
+                    date = date.plusDays(1)
+                    date = date.hourOfDay().setCopy(START_WORKING_DAY)
+                    date = date.minuteOfHour().setCopy(0)
+                    date = date.secondOfMinute().setCopy(0)
+
+                    return date.toDate()
+                }
+            }
+        } else if (dayHour !in START_WORKING_DAY until END_WORKING_DAY) { // START_WORKING_DAY <= dayHour < END_WORKING_DAY
+            return if (dayHour < START_WORKING_DAY) {
+                date = date.hourOfDay().setCopy(START_WORKING_DAY)
+                date = date.minuteOfHour().setCopy(0)
+                date = date.secondOfMinute().setCopy(0)
+
+                date.toDate()
+            } else { // >= END_WORKING_DAY
+                date = date.plusDays(1)
+                date = date.hourOfDay().setCopy(START_WORKING_DAY)
+                date = date.minuteOfHour().setCopy(0)
+                date = date.secondOfMinute().setCopy(0)
+
+                date.toDate()
+            }
+        }
+        return date.toDate()
+    }
+
+    private const val START_WORKING_DAY = 9
+    private const val END_WORKING_DAY = 18
 
 }

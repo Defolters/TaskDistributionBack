@@ -28,6 +28,8 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
                 Items.isReady eq false
             }.mapNotNull { it.rowToItem() }
 
+            if (items.isEmpty()) return@dbQuery
+
             items.forEach { item ->
                 val tasksData = mutableListOf<TaskData>()
 
@@ -45,7 +47,8 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
                             taskDependency = task.taskDependencyId,
                             isAdditional = task.isAdditional,
                             title = task.title,
-                            color = item.color
+                            color = item.color,
+                            status = task.status
                         )
                     )
                 }

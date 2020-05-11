@@ -49,7 +49,6 @@ fun Route.ordersRoute(db: OrderRepository) {
         post<OrdersRoute> {
             call.getActiveUser(db) ?: return@post
 
-            // TODO: Add creating of orders
             val date = Calendar.getInstance().time
             val logger = Logger.getLogger("APP")
             logger.log(Level.INFO, "date: $date")
