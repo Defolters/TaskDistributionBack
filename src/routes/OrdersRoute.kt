@@ -47,7 +47,7 @@ data class ItemJSON(
 fun Route.ordersRoute(db: OrderRepository) {
     authenticate("jwt") {
         post<OrdersRoute> {
-            call.getActiveUser(db) ?: return@post
+//            call.getActiveUser(db) ?: return@post
 
             val date = Calendar.getInstance().time
             val logger = Logger.getLogger("APP")
@@ -79,7 +79,7 @@ fun Route.ordersRoute(db: OrderRepository) {
             }
         }
         get<OrdersRoute> {
-            call.getActiveUser(db) ?: return@get
+//            call.getActiveUser(db) ?: return@get
 
             try {
                 val orders = db.getOrders()
@@ -90,7 +90,7 @@ fun Route.ordersRoute(db: OrderRepository) {
             }
         }
         get<OrdersIdRoute> { params ->
-            call.getActiveUser(db) ?: return@get
+//            call.getActiveUser(db) ?: return@get
 
             try {
                 db.findOrder(params.id)?.let { order ->
@@ -102,7 +102,7 @@ fun Route.ordersRoute(db: OrderRepository) {
             }
         }
         delete<OrdersRoute> {
-            call.getActiveUser(db) ?: return@delete
+//            call.getActiveUser(db) ?: return@delete
 
             val jsonData = call.receive<OrderJSON>()
 

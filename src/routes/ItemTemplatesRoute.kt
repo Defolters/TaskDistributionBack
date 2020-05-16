@@ -46,7 +46,7 @@ fun Route.itemTemplatesRoute(db: ItemTemplateRepository) {
             }
         }
         get<ItemTemplatesRoute> {
-            call.getActiveUser(db) ?: return@get
+//            call.getActiveUser(db) ?: return@get
 
             try {
                 val itemTemplates = db.getItemTemplates()

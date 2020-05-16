@@ -73,7 +73,7 @@ fun Route.taskTemplatesRoute(db: TaskTemplateRepository) {
             }
         }
         get<TaskTemplatesRoute> {
-            call.getActiveUser(db) ?: return@get
+//            call.getActiveUser(db) ?: return@get
 
             val taskTemplatesParameters = call.request.queryParameters
             val filter = taskTemplatesParameters["filter"]

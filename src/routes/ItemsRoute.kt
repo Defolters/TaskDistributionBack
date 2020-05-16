@@ -30,7 +30,7 @@ data class ItemsIdRoute(val id: Int)
 fun Route.itemsRoute(db: ItemRepository) {
     authenticate("jwt") {
         get<ItemsRoute> {
-            call.getActiveUser(db) ?: return@get
+//            call.getActiveUser(db) ?: return@get
 
             val itemsParameters = call.request.queryParameters
             val orderId = itemsParameters["orderId"]
@@ -48,7 +48,7 @@ fun Route.itemsRoute(db: ItemRepository) {
             }
         }
         get<ItemsIdRoute> { idRoute ->
-            call.getActiveUser(db) ?: return@get
+//            call.getActiveUser(db) ?: return@get
 
             try {
                 db.findItem(idRoute.id)?.let { item ->

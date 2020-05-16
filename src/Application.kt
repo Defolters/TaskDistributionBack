@@ -74,7 +74,7 @@ fun Application.module() {
     install(Authentication) {
         jwt("jwt") {
             verifier(jwtService.verifier)
-            realm = "Todo Server"
+            realm = "Server"
             validate {
                 val payload = it.payload
                 val claim = payload.getClaim("id")

@@ -23,6 +23,7 @@ data class WorkerTypeData(val id: Int, val name: String)
 data class ScheduleTaskData(
     val id: Int,
     val resourceId: Int,
+    val taskId: Int,
     val start: String,
     val end: String,
     val title: String,
@@ -35,7 +36,7 @@ data class ScheduleData(val workerTypes: List<WorkerTypeData>, val tasks: List<S
 fun Route.scheduleRoute(db: ScheduleRepository) {
     authenticate("jwt") {
         get<ScheduleRoute> {
-            call.getActiveUser(db) ?: return@get
+//            call.getActiveUser(db) ?: return@get
 
             try {
                 val schedule = db.getSchedule()

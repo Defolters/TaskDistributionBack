@@ -64,6 +64,7 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
             tasks.forEach { taskData ->
                 ScheduleTasks.insert {
                     it[ScheduleTasks.workerTypeId] = taskData.resourceId
+                    it[ScheduleTasks.taskId] = taskData.taskId
                     it[ScheduleTasks.title] = taskData.title
                     it[ScheduleTasks.start] = taskData.start
                     it[ScheduleTasks.end] = taskData.end
@@ -446,10 +447,18 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
         }
     }
 
-    override suspend fun getTasks(itemId: Int): List<Task> {
+    override suspend fun getItemTasks(itemId: Int): List<Task> {
         return dbQuery {
             Tasks.select {
                 Tasks.itemId.eq((itemId))
+            }.mapNotNull { it.rowToTask() }
+        }
+    }
+
+    override suspend fun getWorkerTasks(workerTypeId: Int): List<Task> {
+        return dbQuery {
+            Tasks.select {
+                Tasks.workerTypeId.eq((workerTypeId))
             }.mapNotNull { it.rowToTask() }
         }
     }
@@ -458,6 +467,17 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
         if (id == null) return null
 
         return dbQuery {
+            Tasks.select {
+                Tasks.id.eq(id)
+            }.mapNotNull { it.rowToTask() }.singleOrNull()
+        }
+    }
+
+    override suspend fun updateTaskStatus(id: Int, status: TaskStatus): Task? {
+        return dbQuery {
+            Tasks.update({ Tasks.id eq id }) {
+                it[Tasks.status] = status
+            }
             Tasks.select {
                 Tasks.id.eq(id)
             }.mapNotNull { it.rowToTask() }.singleOrNull()
@@ -588,6 +608,7 @@ fun ResultRow.rowToWorkerType() = WorkerType(
 fun ResultRow.rowToScheduleTask() = ScheduleTaskData(
     id = this[ScheduleTasks.id],
     resourceId = this[ScheduleTasks.workerTypeId],
+    taskId = this[ScheduleTasks.taskId],
     start = this[ScheduleTasks.start],
     end = this[ScheduleTasks.end],
     title = this[ScheduleTasks.title],

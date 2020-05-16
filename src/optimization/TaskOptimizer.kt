@@ -282,6 +282,7 @@ object TaskOptimizer {
                         ScheduleTaskData(
                             id = assigned_task.index,
                             resourceId = machine,
+                            taskId = assigned_task.index,
                             start = startString,
                             end = endString,
                             title = "${assigned_task.title} ${duration}h",
@@ -474,6 +475,7 @@ object TaskOptimizer {
                         ScheduleTaskData(
                             id = assigned_task.index,
                             resourceId = machine,
+                            taskId = assigned_task.index,
                             start = startString,
                             end = endString,
                             title = "${assigned_task.title} ${duration}h",
