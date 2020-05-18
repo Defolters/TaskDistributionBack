@@ -195,6 +195,14 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
         }
     }
 
+    override suspend fun getTaskTemplates(itemTemplateId: Int): List<TaskTemplate> {
+        return dbQuery {
+            TaskTemplates.select {
+                TaskTemplates.itemTemplateId.eq((itemTemplateId))
+            }.mapNotNull { it.rowToTaskTemplate() }
+        }
+    }
+
     override suspend fun getTaskTemplates(itemTemplateId: Int, isAdditional: Boolean): List<TaskTemplate> {
         return dbQuery {
             TaskTemplates.select {
@@ -327,7 +335,7 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
                         ?: throw Exception()
 
                     taskTemplate.taskTemplateDependencyId?.let { id ->
-                        if ((id !in map) && (id !in idsList)) {
+                        if ((id !in map) && (!additionalNewList.any { it.id == id }) && (id !in idsList)) {
                             idsList.add(id)
                         }
                     }
