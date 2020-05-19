@@ -1,6 +1,7 @@
 package io.defolters.routes
 
 import io.defolters.API_VERSION
+import io.defolters.models.TaskStatus
 import io.defolters.repository.interfaces.ScheduleRepository
 import io.ktor.application.application
 import io.ktor.application.call
@@ -23,7 +24,10 @@ data class WorkerTypeData(val id: Int, val name: String)
 data class ScheduleTaskData(
     val id: Int,
     val resourceId: Int,
+    val itemId: Int,
     val taskId: Int,
+    val taskDependencyId: Int?,
+    val taskStatus: TaskStatus,
     val start: String,
     val end: String,
     val title: String,

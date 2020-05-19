@@ -69,14 +69,14 @@ fun Route.tasksRoute(db: TaskRepository) {
             }
         }
         put<TasksRoute> {
-            call.getActiveUser(db) ?: return@put
+//            call.getActiveUser(db) ?: return@put
 
             val jsonData = call.receive<TaskJSON>()
 
             try {
                 db.updateTaskStatus(jsonData.id, jsonData.taskStatus)?.let {
-                    call.respond(it)
                     db.optimize()
+                    call.respond(it)
                 }
             } catch (e: Throwable) {
                 application.log.error("Failed to update Task", e)

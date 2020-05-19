@@ -17,7 +17,10 @@ data class AssignedTaskType(
     val index: Int,
     val duration: Int,
     val title: String,
-    val color: String
+    val color: String,
+    val item_id: Int,
+    val taskStatus: TaskStatus = TaskStatus.NEW,
+    val taskDependency: Int? = null
 )
 
 data class ItemData(val tasks: List<TaskData>)
@@ -237,7 +240,7 @@ object TaskOptimizer {
                         AssignedTaskType(
                             start = solver.value(allTasks[Pair(order_id, task_id)]?.start),
                             job = order_id, index = task_id, duration = task.timeToComplete,
-                            title = task.title, color = task.color
+                            title = task.title, color = task.color, item_id = task.item_id
                         )
                     )
                 }
@@ -282,7 +285,10 @@ object TaskOptimizer {
                         ScheduleTaskData(
                             id = assigned_task.index,
                             resourceId = machine,
+                            itemId = assigned_task.item_id,
                             taskId = assigned_task.index,
+                            taskDependencyId = assigned_task.taskDependency,
+                            taskStatus = assigned_task.taskStatus,
                             start = startString,
                             end = endString,
                             title = "${assigned_task.title} ${duration}h",
@@ -396,7 +402,7 @@ object TaskOptimizer {
             flatTasks.filter { it.workerType == task.workerType }.forEach { laterTask ->
                 model.addGreaterOrEqual(
                     allTasks[Pair(laterTask.item_id, laterTask.task_id)]!!.start,
-                    allTasks[Pair(task.item_id, task.task_id)]!!.end
+                    allTasks[Pair(task.item_id, task.task_id)]!!.start
                 )
             }
         }
@@ -426,7 +432,8 @@ object TaskOptimizer {
                         AssignedTaskType(
                             start = solver.value(allTasks[Pair(task.item_id, task_id)]?.start),
                             job = task.item_id, index = task_id, duration = task.timeToComplete,
-                            title = task.title, color = task.color
+                            title = task.title, color = task.color, taskStatus = task.status, item_id = task.item_id,
+                            taskDependency = task.taskDependency
                         )
                     )
                 }
@@ -475,7 +482,10 @@ object TaskOptimizer {
                         ScheduleTaskData(
                             id = assigned_task.index,
                             resourceId = machine,
+                            itemId = assigned_task.item_id,
                             taskId = assigned_task.index,
+                            taskDependencyId = assigned_task.taskDependency,
+                            taskStatus = assigned_task.taskStatus,
                             start = startString,
                             end = endString,
                             title = "${assigned_task.title} ${duration}h",

@@ -44,7 +44,7 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
                             item_id = task.itemId,
                             workerType = task.workerTypeId,
                             timeToComplete = task.timeToComplete,
-                            taskDependency = task.taskDependencyId,
+                            taskDependency = if (tasks.any { it.id == task.taskDependencyId }) task.taskDependencyId else null,
                             isAdditional = task.isAdditional,
                             title = task.title,
                             color = item.color,
@@ -64,7 +64,10 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
             tasks.forEach { taskData ->
                 ScheduleTasks.insert {
                     it[ScheduleTasks.workerTypeId] = taskData.resourceId
+                    it[ScheduleTasks.itemId] = taskData.itemId
                     it[ScheduleTasks.taskId] = taskData.taskId
+                    it[ScheduleTasks.taskDependencyId] = taskData.taskDependencyId
+                    it[ScheduleTasks.taskStatus] = taskData.taskStatus
                     it[ScheduleTasks.title] = taskData.title
                     it[ScheduleTasks.start] = taskData.start
                     it[ScheduleTasks.end] = taskData.end
@@ -486,9 +489,41 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
             Tasks.update({ Tasks.id eq id }) {
                 it[Tasks.status] = status
             }
-            Tasks.select {
+
+            val task = Tasks.select {
                 Tasks.id.eq(id)
             }.mapNotNull { it.rowToTask() }.singleOrNull()
+
+            task?.let {
+                val tasksForItem = Tasks.select {
+                    Tasks.itemId.eq(task.itemId)
+                }.mapNotNull { it.rowToTask() }
+
+                val isAllDone = tasksForItem.all { it.status == TaskStatus.DONE }
+
+                val item = Items.select {
+                    Items.id.eq(task.itemId)
+                }.mapNotNull { it.rowToItem() }.singleOrNull()
+
+                if (isAllDone && item != null) {
+                    Items.update({ Items.id eq task.itemId }) {
+                        it[Items.isReady] = true
+                    }
+
+                    val itemsForOrder = Items.select {
+                        Items.orderId.eq(item.orderId)
+                    }.mapNotNull { it.rowToItem() }
+
+                    val isAllItemsDone = itemsForOrder.all { it.isReady }
+
+                    if (isAllItemsDone) {
+                        Orders.update({ Orders.id eq item.orderId }) {
+                            it[Orders.isReady] = true
+                        }
+                    }
+                }
+            }
+            task
         }
     }
 
@@ -616,7 +651,10 @@ fun ResultRow.rowToWorkerType() = WorkerType(
 fun ResultRow.rowToScheduleTask() = ScheduleTaskData(
     id = this[ScheduleTasks.id],
     resourceId = this[ScheduleTasks.workerTypeId],
+    itemId = this[ScheduleTasks.itemId],
     taskId = this[ScheduleTasks.taskId],
+    taskDependencyId = this[ScheduleTasks.taskDependencyId],
+    taskStatus = this[ScheduleTasks.taskStatus],
     start = this[ScheduleTasks.start],
     end = this[ScheduleTasks.end],
     title = this[ScheduleTasks.title],
