@@ -22,7 +22,7 @@ class WorkerTypesRoute
 @Location("$WORKER_TYPES/{id}")
 data class WorkerTypesIdRoute(val id: Int)
 
-data class WorkerTypeJSON(val id: Int, val title: String, val ids: List<Int>?)
+data class WorkerTypeJSON(val id: Int, val title: String, val ids: List<Int>?, val isActive: Boolean)
 
 @KtorExperimentalLocationsAPI
 fun Route.workerTypesRoute(db: WorkerTypeRepository) {
@@ -90,8 +90,9 @@ fun Route.workerTypesRoute(db: WorkerTypeRepository) {
             val jsonData = call.receive<WorkerTypeJSON>()
 
             try {
-                db.updateWorkerType(jsonData.id, jsonData.title)?.let {
+                db.updateWorkerType(jsonData.id, jsonData.title, jsonData.isActive)?.let {
                     call.respond(it)
+                    db.optimize()
                 }
             } catch (e: Throwable) {
                 application.log.error("Failed to update WorkerType", e)

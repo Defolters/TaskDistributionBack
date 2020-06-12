@@ -14,6 +14,7 @@ object Tasks : Table() {
     val isAdditional = bool("isAdditional")
     val status = enumerationByName("status", 10, TaskStatus::class)
     val lastStatusUpdate = varchar("start", 512)
+    val isActive = bool("isActive")
 
     override val primaryKey = PrimaryKey(id)
 }

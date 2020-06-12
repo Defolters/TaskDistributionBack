@@ -26,7 +26,7 @@ class TasksRoute
 @Location("$TASKS/{id}")
 data class TasksIdRoute(val id: Int)
 
-data class TaskJSON(val id: Int, val taskStatus: TaskStatus)
+data class TaskJSON(val id: Int, val taskStatus: TaskStatus?, val isActive: Boolean?)
 
 @KtorExperimentalLocationsAPI
 fun Route.tasksRoute(db: TaskRepository) {
@@ -74,9 +74,16 @@ fun Route.tasksRoute(db: TaskRepository) {
             val jsonData = call.receive<TaskJSON>()
 
             try {
-                db.updateTaskStatus(jsonData.id, jsonData.taskStatus)?.let {
-                    db.optimize()
-                    call.respond(it)
+                if (jsonData.taskStatus != null) {
+                    db.updateTaskStatus(jsonData.id, jsonData.taskStatus)?.let {
+                        db.optimize()
+                        call.respond(it)
+                    }
+                } else if (jsonData.isActive != null) {
+                    db.updateTask(jsonData.id, jsonData.isActive)?.let {
+                        db.optimize()
+                        call.respond(it)
+                    }
                 }
             } catch (e: Throwable) {
                 application.log.error("Failed to update Task", e)

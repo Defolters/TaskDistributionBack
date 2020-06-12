@@ -17,6 +17,7 @@ import repository.DatabaseFactory.dbQuery
 import java.awt.Color
 import java.util.logging.Level
 import java.util.logging.Logger
+import kotlin.system.measureTimeMillis
 
 class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepository, OrderRepository,
     ItemRepository, TaskRepository, WorkerTypeRepository, ScheduleRepository {
@@ -30,12 +31,42 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
 
             if (items.isEmpty()) return@dbQuery
 
+            // get non-working workers
+            val nonWorkingWorkers = WorkerTypes.select {
+                WorkerTypes.isActive eq false
+            }.mapNotNull { it.rowToWorkerType() }
+
             items.forEach { item ->
                 val tasksData = mutableListOf<TaskData>()
 
-                val tasks = Tasks.select {
+                var tasks = Tasks.select {
                     Tasks.itemId eq item.id and (Tasks.status neq TaskStatus.DONE)
-                }.mapNotNull { it.rowToTask() }
+                }.mapNotNull { it.rowToTask() }.toMutableList()
+
+                // handle tasks that off
+                val taskDepToRemove = arrayListOf<Int>()
+
+                // tasks for non working worker or not active tasks
+                val tasksCannotBeDone =
+                    tasks.filter { (it.workerTypeId in nonWorkingWorkers.map { it.id }) or !it.isActive }
+                val isMandatoryCannotBeDone = tasksCannotBeDone.any { !it.isAdditional }
+                tasksCannotBeDone.forEach { taskDepToRemove.add(it.id) }
+
+                if (isMandatoryCannotBeDone) {
+                    tasks = tasks.filter { !it.isAdditional }.toMutableList()
+                }
+
+                var i = 0
+                while (taskDepToRemove.isNotEmpty()) {
+                    val taskId = taskDepToRemove[i % taskDepToRemove.size]
+
+                    tasks.removeIf { it.id == taskId }
+                    taskDepToRemove.addAll(tasks.filter { it.taskDependencyId == taskId }.map { it.id })
+
+                    taskDepToRemove.removeAt(i % taskDepToRemove.size)
+                    i++
+                }
+
 
                 tasks.forEach { task ->
                     tasksData.add(
@@ -56,24 +87,38 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
                 itemsData.add(ItemData(tasksData))
             }
 
-            // OPTIMIZE
-            // TODO: BEFORE CALLING WE SHOULD CHANGE TIME OF TASKS IN WORK
-            val tasks = TaskOptimizer.optimizeFourth(itemsData)
 
-            ScheduleTasks.deleteAll()
-            tasks.forEach { taskData ->
-                ScheduleTasks.insert {
-                    it[ScheduleTasks.workerTypeId] = taskData.resourceId
-                    it[ScheduleTasks.itemId] = taskData.itemId
-                    it[ScheduleTasks.taskId] = taskData.taskId
-                    it[ScheduleTasks.taskDependencyId] = taskData.taskDependencyId
-                    it[ScheduleTasks.taskStatus] = taskData.taskStatus
-                    it[ScheduleTasks.title] = taskData.title
-                    it[ScheduleTasks.start] = taskData.start
-                    it[ScheduleTasks.end] = taskData.end
-                    it[ScheduleTasks.color] = taskData.bgColor
+            val logger = Logger.getLogger("APP")
+
+
+            val timeOptimization = measureTimeMillis {
+                // OPTIMIZE
+                // TODO: BEFORE CALLING WE SHOULD CHANGE TIME OF TASKS IN WORK
+                val tasks = TaskOptimizer.optimizeFourth(itemsData)
+
+                ScheduleTasks.deleteAll()
+                tasks.forEach { taskData ->
+                    ScheduleTasks.insert {
+                        it[ScheduleTasks.workerTypeId] = taskData.resourceId
+                        it[ScheduleTasks.itemId] = taskData.itemId
+                        it[ScheduleTasks.taskId] = taskData.taskId
+                        it[ScheduleTasks.taskDependencyId] = taskData.taskDependencyId
+                        it[ScheduleTasks.taskStatus] = taskData.taskStatus
+                        it[ScheduleTasks.title] = taskData.title
+                        it[ScheduleTasks.start] = taskData.start
+                        it[ScheduleTasks.end] = taskData.end
+                        it[ScheduleTasks.color] = taskData.bgColor
+                    }
                 }
+
+                logger.log(Level.INFO, "tasks size: ${tasks.size}")
+                logger.log(Level.INFO, "items size: ${items.size}")
+                logger.log(Level.INFO, "orders size: ${items.distinctBy { it.orderId }.size}")
             }
+
+
+            logger.log(Level.INFO, "time to optimize tasks: $timeOptimization")
+
         }
     }
 
@@ -313,6 +358,7 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
                             it[Tasks.isAdditional] = taskTemplate.isAdditional
                             it[Tasks.status] = TaskStatus.NEW
                             it[Tasks.lastStatusUpdate] = time
+                            it[Tasks.isActive] = true
                         }
                         val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
 
@@ -368,6 +414,7 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
                             it[Tasks.isAdditional] = taskTemplate.isAdditional
                             it[Tasks.status] = TaskStatus.NEW
                             it[Tasks.lastStatusUpdate] = time
+                            it[Tasks.isActive] = true
                         }
                         val newTask = taskInsertStatement.resultedValues?.get(0)?.rowToTask()!!
 
@@ -527,11 +574,21 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
         }
     }
 
+    override suspend fun updateTask(id: Int, isActive: Boolean): Task? {
+        return dbQuery {
+            Tasks.update({ Tasks.id eq id }) {
+                it[Tasks.isActive] = isActive
+            }
+            Tasks.select { Tasks.id eq id }.mapNotNull { it.rowToTask() }.singleOrNull()
+        }
+    }
+
     override suspend fun addWorkerType(title: String): WorkerType? {
         var statement: InsertStatement<Number>? = null
         dbQuery {
             statement = WorkerTypes.insert {
                 it[WorkerTypes.title] = title
+                it[WorkerTypes.isActive] = true
             }
         }
         return statement?.resultedValues?.get(0)?.rowToWorkerType()
@@ -561,10 +618,11 @@ class Repository : UserRepository, ItemTemplateRepository, TaskTemplateRepositor
         }
     }
 
-    override suspend fun updateWorkerType(id: Int, title: String): WorkerType? {
+    override suspend fun updateWorkerType(id: Int, title: String, isActive: Boolean): WorkerType? {
         return dbQuery {
             WorkerTypes.update({ WorkerTypes.id eq id }) {
                 it[WorkerTypes.title] = title
+                it[WorkerTypes.isActive] = isActive
             }
             WorkerTypes.select {
                 WorkerTypes.id.eq(id)
@@ -640,12 +698,14 @@ fun ResultRow.rowToTask() = Task(
     timeToComplete = this[Tasks.timeToComplete],
     isAdditional = this[Tasks.isAdditional],
     status = this[Tasks.status],
-    lastStatusUpdate = this[Tasks.lastStatusUpdate]
+    lastStatusUpdate = this[Tasks.lastStatusUpdate],
+    isActive = this[Tasks.isActive]
 )
 
 fun ResultRow.rowToWorkerType() = WorkerType(
     id = this[WorkerTypes.id],
-    title = this[WorkerTypes.title]
+    title = this[WorkerTypes.title],
+    isActive = this[WorkerTypes.isActive]
 )
 
 fun ResultRow.rowToScheduleTask() = ScheduleTaskData(

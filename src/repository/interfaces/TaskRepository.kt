@@ -9,4 +9,5 @@ interface TaskRepository : RepositoryInterface {
     suspend fun getWorkerTasks(workerTypeId: Int): List<Task>
     suspend fun findTask(id: Int?): Task?
     suspend fun updateTaskStatus(id: Int, status: TaskStatus): Task?
+    suspend fun updateTask(id: Int, isActive: Boolean): Task?
 }
